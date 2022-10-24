@@ -1,0 +1,3 @@
+/home/yubtin/codes/yubindb/CMakeFiles/example.dir
+/home/yubtin/codes/yubindb/CMakeFiles/edit_cache.dir
+/home/yubtin/codes/yubindb/CMakeFiles/rebuild_cache.dir

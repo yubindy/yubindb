@@ -1,0 +1,1 @@
+/usr/bin/c++ -L/usr/local/opt/llvm/lib CMakeFiles/a.out.dir/spdlog.cpp.o -o a.out  /usr/lib/x86_64-linux-gnu/libspdlog.so.1.9.2 /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.74.0 -lgtest /usr/local/lib/libfmt.a /usr/lib/x86_64-linux-gnu/libboost_atomic.so.1.74.0 
