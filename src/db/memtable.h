@@ -2,7 +2,13 @@
 #define YUBINDB_MEMTABLE_H_
 namespace yubindb {
 
-class Nemtable {};
+class MemTable {
+ public:
+  MemTable();
+  ~MemTable();
 
-} // namespace yubindb
+ private:
+};
+
+}  // namespace yubindb
 #endif

@@ -7,8 +7,7 @@ void WriteBatch::Clear() {
   mate.resize(Headsize);
 }
 void WriteBatch::Put(std::string_view key, std::string_view value) {
-  SetCount(Count()+1);
-  
+  SetCount(Count() + 1);
 }
 
 void WriteBatch::Delete(std::string_view key) {}

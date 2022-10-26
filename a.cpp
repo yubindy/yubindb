@@ -1,5 +1,5 @@
 #include <iostream>
-#include <std:: string_view>
+#include <string_view>
 #include <string>
 
 int main() {

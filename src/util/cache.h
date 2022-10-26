@@ -1,6 +1,5 @@
 #ifndef YUBINDB_CACHE_H_
 #define YUBINDB_CACHE_H_
-#include "folly/FBString.h"
 #include <array>
 #include <list>
 #include <map>

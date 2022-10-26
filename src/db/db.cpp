@@ -26,6 +26,23 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
   if(w.done){
     return w.state;
   }
+  // 写入前的各种检查为写入的数据留出足够的buffer,
+  //MakeRoomForWrite方法会根据当前MemTable的使用率来选择是否触发Minor Compaction
+  State statue =MakeRoomForwrite(updates==nullptr);
+  uint64_t last_sequence = version_-> LastSqruence();
+  Writer* now_writer =&w;
+  if( State.ok() && update!=nullptr){
+    WriteBatch* updates = BuildBatchGroup(&now_writer);
+    updates->SetSequence(last_sequence+1);
+    last_sequence = updates->Count();
+
+    //将数据写入到LevelDB
+    mutex.unlock();
+    State = logwrite->Append()
+  }
+
+}
+State DBImpl::MakeRoomForwrite(bool force){
   
 }
 }  // namespace yubindb

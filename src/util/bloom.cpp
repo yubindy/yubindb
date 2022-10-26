@@ -1,6 +1,5 @@
 #include "bloom.h"
 #include <cstdint>
-#include <folly/hash/Hash.h>
 #include <memory.h>
 #include <string>
 

@@ -1,6 +1,6 @@
 #ifndef YUBINDB_WRITE_BATCH_H_
 #define YUBINDB_WRITE_BATCH_H_
-#include <std:: string_view>
+#include <string_view>
 #include <string>
 
 #include "../util/common.h"

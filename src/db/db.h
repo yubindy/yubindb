@@ -1,14 +1,17 @@
-#ifndef YUBINDB_CACHE_H_
-#define YUBINDB_CACHE_H_
+#ifndef YUBINDB_DB_H_
+#define YUBINDB_DB_H_
 #include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <set>
 #include <stdio.h>
 #include <string_view>
 
 #include "../util/common.h"
 #include "../util/options.h"
+#include "memtable.h"
+#include "walog.h"
 #include "writebatch.h"
 
 namespace yubindb {
@@ -18,6 +21,8 @@ struct Options;
 struct ReadOptions;
 struct WriteOptions;
 struct Writer;
+
+class SnapshotList;
 
 class DB {
  public:
@@ -44,6 +49,7 @@ class DBImpl : public DB {
             std::string_view value) override;
   State Delete(const WriteOptions& options, std::string_view key) override;
   State Write(const WriteOptions& options, WriteBatch* updates) override;
+  State DBImpl::MakeRoomForwrite(bool force);
 
  private:
   struct Writer {
@@ -62,8 +68,18 @@ class DBImpl : public DB {
     WriteBatch* batch;
   };
   std::mutex mutex;
-  std::atomic<bool> shutting_down;
+  std::atomic<bool> shutting_down_;
+  MemTable* mem_;
+  MemTable* imm_;
+  std::atomic<bool> has_imm_;
+  uint64_t logfilenum;
+  walWriter* logwrite;
   std::deque<Writer*> writerque;
+
+  SnapshotList snapshots_;
+  std::set<uint64_t> pending_outputs_ bool background_compaction_;
+  VersionSet* const versions_;
+  State stats_[kNumLevels];
 };
 }  // namespace yubindb
 
