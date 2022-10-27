@@ -1,8 +1,8 @@
 SKIPLIST_HEADERS = glob([
-        "skiplist/include/*.h",
+        "include/*.h",
 ])
 SKIPLIST_SOURCES = glob([
-        "skiplist/src/*.cpp",
+        "src/*.cc",
 ])
 cc_library(
     name = "skiplist",

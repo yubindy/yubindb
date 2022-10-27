@@ -3,46 +3,46 @@
 #include <string_view>
 
 #include "../util/common.h"
+#include "../util/env.h"
+
 namespace yubindb {
 
-//顺序写入
-class WritableFile {
- public:
-  explicit WritableFile();
-  ~WritableFile();
-  WritableFile(const WritableFile&) = delete;
-  WritableFile& operator=(const WritableFile&) = delete;
+enum RecordType {
+  // zero is reserved for preallocated files
+  kzerotype = 0,
 
-  State Append(std::string_view ptr);
-  State Close();
-  State Flush();
-  State Sync();
-
- private:
+  kfulltype = 1,
+  kfirsttype = 2,
+  kmiddletype = 3,
+  klasttype = 4
 };
-//顺序读取
-class ReadFile {
+class Record {
  public:
-  explicit ReadFile();
-  ReadFile(const ReadFile&) = delete;
-  ReadFile& operator=(const ReadFile&) = delete;
-  ~ReadFile();
-  State Read(size_t n, std::string_view* result, char* scratch);
-  State Skip(uint64_t n);
+  Record();
+  ~Record();
 
  private:
 };
 class walWriter {
  public:
-  explicit walWriter(WritableFile* file);
+  explicit walWriter(WritableFile* file_) : file(file_), block_offset(0) {
+    for (int i = 0; i <= klasttype; i++) {
+      // crc32
+    }
+  }
   ~walWriter();
   State Append(std::string_view str);
 
  private:
+  State Flushphyrecord(RecordType type, const char* buf_, size_t size);
+  WritableFile* file;
+  int block_offset;
+  uint32_t type_crc[klasttype + 1];
 };
 class walReader {
  public:
   explicit walReader();
+  ~walReader();
 
  private:
 };

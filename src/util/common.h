@@ -101,8 +101,8 @@ class State {
   static State InvalidArgument(const std::string& msg) {
     return State(kinvalidargument, msg);
   }
-  static State IOError(const std::string& msg) { return State(kioerror, msg); }
-  bool ok() const { return (state_ == nullptr); }
+  static State IoError(const std::string& msg) { return State(kioerror, msg); }
+  bool Isok() const { return (state_ == nullptr); }
 
   bool IsNotFound() const { return code() == knotfound; }
 
