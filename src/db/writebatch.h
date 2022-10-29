@@ -1,7 +1,7 @@
 #ifndef YUBINDB_WRITE_BATCH_H_
 #define YUBINDB_WRITE_BATCH_H_
-#include <string_view>
 #include <string>
+#include <string_view>
 
 #include "../util/common.h"
 namespace yubindb {
@@ -17,11 +17,9 @@ class WriteBatch {
   void Put(std::string_view key, std::string_view value);
   void Delete(std::string_view key);
   void Clear();
-  void Append(const WriteBatch& source);
+  void Append(WriteBatch& source);
   State Iterate(Handler* handler) const;
   size_t mateSize() const { return mate.size(); }
-
- private:
   // 返回条目数
   int Count();
   // 修改条目数
@@ -38,8 +36,7 @@ class WriteBatch {
 
   State InsertInto(Memtable* memtable);
 
-  void Append();
-
+ private:
   std::string mate;
 };
 }  // namespace yubindb

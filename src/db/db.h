@@ -3,12 +3,14 @@
 #include <atomic>
 #include <condition_variable>
 #include <deque>
+#include <memory.h>
 #include <mutex>
 #include <set>
 #include <stdio.h>
 #include <string_view>
 
 #include "../util/common.h"
+#include "../util/env.h"
 #include "../util/options.h"
 #include "memtable.h"
 #include "walog.h"
@@ -25,6 +27,7 @@ class VersionSet;
 class SnapshotList;
 
 const static int kNumLevels = 7;
+const static size_t MaxBatchSize = 1024;
 class DB {
  public:
   explicit DB() {}
@@ -43,7 +46,10 @@ class DBImpl : public DB {
   explicit DBImpl(const Options opt, const std::string dbname);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
-  ~DBImpl();
+  ~DBImpl() {
+    mutex.unlock();
+    delete versions_;
+  };
   State Open(const Options& options, std::string_view name,
              DB** dbptr) override;
   State Put(const WriteOptions& options, std::string_view key,
@@ -51,12 +57,18 @@ class DBImpl : public DB {
   State Delete(const WriteOptions& options, std::string_view key) override;
   State Write(const WriteOptions& options, WriteBatch* updates) override;
   State MakeRoomForwrite(bool force);
+  State InsertInto(WriteBatch* batch, Memtable* mem);
+  WriteBatch* BuildBatchGroup(Writer** last_writer);
 
  private:
   struct Writer {
     explicit Writer(std::mutex* mutex_, bool sync_, bool done_,
                     WriteBatch* updates)
         : mutex(mutex_), sync(sync_), done(done_), batch(updates) {}
+    ~Writer() {
+      delete[] batch;
+      mutex->unlock();
+    }
     void wait() {
       std::unique_lock<std::mutex> p(*mutex);
       cond.wait(p);
@@ -69,14 +81,16 @@ class DBImpl : public DB {
     State state;
     WriteBatch* batch;
   };
+  WriteBatch* BuildBatch(Writer** rul);
   std::mutex mutex;
   std::atomic<bool> shutting_down_;
-  MemTable* mem_;
-  MemTable* imm_;
+  std::unique_ptr<Memtable> mem_;  // now memtable
+  std::unique_ptr<Memtable> imm_;  // imemtable
   std::atomic<bool> has_imm_;
   uint64_t logfilenum;
-  walWriter* logwrite;
-  std::deque<Writer*> writerque;
+  std::unique_ptr<WritableFile> logfile;
+  std::unique_ptr<walWriter> logwrite;
+  std::deque<std::shared_ptr<Writer>> writerque;
 
   SnapshotList* snapshots_;
   std::set<uint64_t> pending_outputs_;

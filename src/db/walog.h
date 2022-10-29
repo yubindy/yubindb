@@ -21,8 +21,8 @@ enum RecordType {
   kLastType = 4
 };
 static const int kBlockSize = 32768;
-static const int kHeaderSize =
-    7;  // checksum (4 bytes), length (2 bytes), type (1 byte).
+static const int kHeaderSize = 7;
+// checksum (4 bytes), length (2 bytes), type (1 byte).
 class Record {
  public:
   Record();
@@ -32,7 +32,7 @@ class Record {
 };
 class walWriter {
  public:
-  explicit walWriter(WritableFile* file_) block_offset(0) {
+  explicit walWriter(WritableFile* file_) : block_offset(0) {
     file.reset();
     file.reset(file_);
     for (int i = 0; i <= kLastType; i++) {

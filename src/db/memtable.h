@@ -2,10 +2,10 @@
 #define YUBINDB_MEMTABLE_H_
 namespace yubindb {
 
-class MemTable {
+class Memtable {
  public:
-  MemTable();
-  ~MemTable();
+  Memtable();
+  ~Memtable();
 
  private:
 };

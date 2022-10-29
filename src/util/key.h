@@ -6,8 +6,8 @@
 namespace yubindb {
 typedef uint64_t SequenceNum;
 class LookupKey {
-public:
-private:
+ public:
+ private:
 };
-} // namespace yubindb
+}  // namespace yubindb
 #endif

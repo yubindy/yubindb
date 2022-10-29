@@ -12,7 +12,10 @@ void WriteBatch::Put(std::string_view key, std::string_view value) {
 
 void WriteBatch::Delete(std::string_view key) {}
 
-void WriteBatch::Append(const WriteBatch& source) {}
+void WriteBatch::Append(WriteBatch& source) {
+  SetCount(source.Count() + Count());
+  mate.append(source.mate.data() + Headsize);
+}
 
 int WriteBatch::Count() { return DecodeFixed32(mate.data() + 8); }
 

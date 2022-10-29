@@ -5,6 +5,50 @@
 #include "spdlog/spdlog.h"
 
 namespace yubindb {
+State WritableFile::Append(std::string_view ptr) {
+  return Append(ptr.data(), ptr.size());
+}
+State WritableFile::Append(const char* ptr, size_t size) {
+  size_t wrsize = std::min(size, kWritableFileBufferSize - offset);
+  const char* wrptr = ptr;
+  std::memcpy(buf_, ptr, size);
+  size -= wrsize;
+  wrptr += wrsize;
+  if (wrsize == size) {
+    return State::Ok();
+  }
+  std::memcpy(buf_, ptr, size);
+  return Flush();
+  //TODO
+}
+State WritableFile::Close() {}
+State WritableFile::Flush() {
+  const char* t = buf_;
+  uint64_t size = offset;
+  ssize_t n = 0;
+  while (size > 0) {
+    n = ::write(fd, buf_, offset);
+    if (n < 0) {
+      spdlog::error("error write: filename: {} err: {}", Name(),
+                    strerror(errno));
+      if (errno == EINTR) {
+        continue;
+      }
+      return State::IoError("error write");
+    }
+    t += n;
+    size -= n;
+  }
+  offset = 0;
+  return State::Ok();
+}
+State WritableFile::Sync() {
+  if (::fcntl(fd, F_FULLFSYNC) == 0) {
+    return Status::OK();
+  }
+  spdlog::error("error sync: filename: {} err: {}", Name(), strerror(errno));
+}
+
 State PosixEnv::NewReadFile(const std::string& filename,
                             std::unique_ptr<ReadFile> result) {
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
@@ -109,5 +153,4 @@ State PosixEnv::RenameFile(const std::string& from, const std::string& to) {
 
 // return State::Ok();
 //}
-WritableFile::WritableFile() {}
 }  // namespace yubindb

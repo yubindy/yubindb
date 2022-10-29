@@ -7,6 +7,8 @@
 #include "spdlog/spdlog.h"
 namespace yubindb {
 
+typedef uint64_t SequenceNum;
+
 //定长 fix
 //非定长 varint
 //编码
@@ -16,7 +18,7 @@ void PutVarint32(std::string* dst, uint32_t value);
 void PutVarint64(std::string* dst, uint64_t value);
 void PutLengthPrefixed(
     std::string* dst,
-    const std::std::string_view& value);  // dst： 长度(编码后) + value
+    const std::string_view& value);  // dst： 长度(编码后) + value
 
 //解码
 bool GetVarint32(std::string_view* input, uint32_t* value);
