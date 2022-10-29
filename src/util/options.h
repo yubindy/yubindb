@@ -4,7 +4,6 @@ namespace yubindb {
 
 struct WriteOptions {
   bool sync;
-
 };
-} // namespace yubindb
+}  // namespace yubindb
 #endif

@@ -11,12 +11,13 @@ namespace yubindb {
 //顺序写入
 class WritableFile {
  public:
-  explicit WritableFile(std::string str_, int fd_);
+  explicit WritableFile(std::string str_, int fd_) : str(str_), fd(fd_) {}
   ~WritableFile();
   WritableFile(const WritableFile&) = delete;
   WritableFile& operator=(const WritableFile&) = delete;
 
   State Append(std::string_view ptr);
+  State Append(const char* ptr, size_t size);
   State Close();
   State Flush();
   State Sync();
@@ -28,7 +29,7 @@ class WritableFile {
 //顺序读取
 class ReadFile {
  public:
-  explicit ReadFile(std::string str_, int fd_);
+  explicit ReadFile(std::string str_, int fd_) : str(str_), fd(fd_) {}
   ReadFile(const ReadFile&) = delete;
   ReadFile& operator=(const ReadFile&) = delete;
   ~ReadFile();

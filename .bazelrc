@@ -1,4 +1,5 @@
-build:debug -c opt --copt -g -std=c++14
+build:debug -c opt --copt -g  --cxxopt=-O0 --jobs=15 -std=c++17
+
 build:asan --strip=never
 build:asan --copt -fsanitize=address
 build:asan --copt -DADDRESS_SANITIZER

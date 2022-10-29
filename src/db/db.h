@@ -21,9 +21,10 @@ struct Options;
 struct ReadOptions;
 struct WriteOptions;
 struct Writer;
-
+class VersionSet;
 class SnapshotList;
 
+const static int kNumLevels = 7;
 class DB {
  public:
   explicit DB() {}
@@ -49,17 +50,18 @@ class DBImpl : public DB {
             std::string_view value) override;
   State Delete(const WriteOptions& options, std::string_view key) override;
   State Write(const WriteOptions& options, WriteBatch* updates) override;
-  State DBImpl::MakeRoomForwrite(bool force);
+  State MakeRoomForwrite(bool force);
 
  private:
   struct Writer {
     explicit Writer(std::mutex* mutex_, bool sync_, bool done_,
                     WriteBatch* updates)
-        : mutex(mutex_),
-          sync(sync_),
-          done(done_),
-          state(state_),
-          batch(updates) {}
+        : mutex(mutex_), sync(sync_), done(done_), batch(updates) {}
+    void wait() {
+      std::unique_lock<std::mutex> p(*mutex);
+      cond.wait(p);
+    }
+
     std::condition_variable cond;
     std::mutex* mutex;
     bool done;
@@ -76,8 +78,9 @@ class DBImpl : public DB {
   walWriter* logwrite;
   std::deque<Writer*> writerque;
 
-  SnapshotList snapshots_;
-  std::set<uint64_t> pending_outputs_ bool background_compaction_;
+  SnapshotList* snapshots_;
+  std::set<uint64_t> pending_outputs_;
+  bool background_compaction_;
   VersionSet* const versions_;
   State stats_[kNumLevels];
 };

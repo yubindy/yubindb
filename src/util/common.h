@@ -102,7 +102,7 @@ class State {
     return State(kinvalidargument, msg);
   }
   static State IoError(const std::string& msg) { return State(kioerror, msg); }
-  bool Isok() const { return (state_ == nullptr); }
+  bool ok() const { return (state_ == nullptr); }
 
   bool IsNotFound() const { return code() == knotfound; }
 

@@ -1,7 +1,7 @@
-
-#include "walog.h"
-
+#ifndef YUBINDB_BLOCK_H_
+#define YUBINDB_BLOCK_H_
 #include "crc32c/crc32c.h"
+#include "walog.h"
 namespace yubindb {
 
 State walWriter::Appendrecord(std::string_view str) {
@@ -44,11 +44,11 @@ State walWriter::Flushphyrecord(RecordType type, const char* buf_,
   buf[2] = type;
   uint32_t check_sum = crc32c::Crc32c(buf_, size);
   State s;
-  s = file->Append((char*)&check_sum, sizeof(check_sum));  // crc
+  s = file->Append((char*)&check_sum, sizeof(check_sum));
   if (!s.ok()) {
     return s;
   }
-  s = file->Append(buf, sizeof(buf));  // size + type
+  s = file->Append(buf, sizeof(buf));
   if (!s.ok()) {
     return s;
   }
@@ -61,3 +61,4 @@ State walWriter::Flushphyrecord(RecordType type, const char* buf_,
   return s;
 }
 }  // namespace yubindb
+#endif

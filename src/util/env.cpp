@@ -109,4 +109,5 @@ State PosixEnv::RenameFile(const std::string& from, const std::string& to) {
 
 // return State::Ok();
 //}
+WritableFile::WritableFile() {}
 }  // namespace yubindb
