@@ -21,7 +21,7 @@ static std::string_view ExtractUserKey(std::string_view internal_key) {
   assert(internal_key.size() >= 8);
   return std::string_view(internal_key.data(), internal_key.size() - 8);
 }
-static bool cmp(std::string_view a, std::string_view b) { //inernalkey cmp
+static int cmp(std::string_view a, std::string_view b) {  // inernalkey cmp
   int r = strcmp(ExtractUserKey(a).data(), ExtractUserKey(b).data());
   if (r == 0) {
     const uint64_t anum = DecodeFixed64(a.data() + a.size() - 8);
@@ -41,11 +41,29 @@ class InternalKey {
     PutFixed64(&Key, parser(num, type));
   }
   ~InternalKey();
-  uint64_t parser(SequenceNum num, Valuetype type);
   std::string_view getview() { return std::string_view(Key); }
+  uint64_t parser(SequenceNum num, Valuetype type);
 
  private:
   std::string Key;
+};
+class SkiplistKey {  // for skiplist
+ public:
+  explicit SkiplistKey(uint32_t intersize, InternalKey interkey_,
+                       std::string_view value)
+      : internalsize(intersize), interkey(interkey_), mate(value) {}
+  ~SkiplistKey() = default;
+  std::string_view getview() { return interkey.getview(); }
+  SkiplistKey& operator=(const SkiplistKey& a) {
+    internalsize = a.internalsize;
+    interkey = a.interkey;
+    mate = a.mate;
+  }
+
+ private:
+  uint32_t internalsize;
+  InternalKey interkey;
+  std::string_view mate;
 };
 static bool compar(const InternalKey& a, const InternalKey& b) {}
 class LookupKey {

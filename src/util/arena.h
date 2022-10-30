@@ -8,6 +8,7 @@
 namespace yubindb {
 static const int kBlockSize = 4096;
 class Arena {
+ public:
   Arena() : alloc_ptr(nullptr), alloc_remaining(0), memory_usage(0) {}
   ~Arena() {
     for (size_t i = 0; i < blocks.size(); i++) {
@@ -30,7 +31,7 @@ class Arena {
   size_t alloc_remaining;  // now block
 
   // Array of new[] allocated memory blocks
-  std::vector<char*> blocks;  //for delete
+  std::vector<char*> blocks;  // for delete
   std::atomic<size_t> memory_usage;
 };
 }  // namespace yubindb
