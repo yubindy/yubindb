@@ -11,15 +11,20 @@ State WritableFile::Append(std::string_view ptr) {
 State WritableFile::Append(const char* ptr, size_t size) {
   size_t wrsize = std::min(size, kWritableFileBufferSize - offset);
   const char* wrptr = ptr;
-  std::memcpy(buf_, ptr, size);
+  std::memcpy(buf_, ptr, wrsize);
   size -= wrsize;
   wrptr += wrsize;
-  if (wrsize == size) {
+  offset += wrsize;
+  if (size == 0) {
     return State::Ok();
   }
-  std::memcpy(buf_, ptr, size);
+  Flush();
+  if (size < kWritableFileBufferSize) {
+    std::memcpy(buf_, ptr, size);
+    offset += size;
+    return State::Ok();
+  }
   return Flush();
-  //TODO
 }
 State WritableFile::Close() {}
 State WritableFile::Flush() {
@@ -42,13 +47,38 @@ State WritableFile::Flush() {
   offset = 0;
   return State::Ok();
 }
-State WritableFile::Sync() {
-  if (::fcntl(fd, F_FULLFSYNC) == 0) {
-    return Status::OK();
+State WritableFile::Sync(int fd, const std::string& pt) {
+  if (ismainifset) {
+    return SyncDirmainifset();
   }
-  spdlog::error("error sync: filename: {} err: {}", Name(), strerror(errno));
+  State p = Flush();
+  if (!p.ok()) {
+    return p;
+  }
+  if (::fdatasync(fd) == 0) {
+    return State::Ok();
+  }
+  spdlog::error("error sync: filename: {} err: {}", pt.c_str(),
+                strerror(errno));
+  return State::IoError("sync");
 }
-
+State WritableFile::SyncDirmainifset() {
+  int fd = ::open(dirstr.c_str(), O_RDONLY | O_CLOEXEC);
+  if (fd < 0) {
+    spdlog::error("error open: filename: {} err: {}", dirstr.c_str(),
+                  strerror(errno));
+    return State::IoError("open error");
+  } else {
+    ::close(fd);
+    if (::fdatasync(fd) == 0) {
+      return State::Ok();
+    }
+    spdlog::error("error sync: filename: {} err: {}", dirstr.c_str(),
+                  strerror(errno));
+    return State::IoError("sync");
+  }
+  return State::Ok();
+}
 State PosixEnv::NewReadFile(const std::string& filename,
                             std::unique_ptr<ReadFile> result) {
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);

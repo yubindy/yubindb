@@ -48,7 +48,6 @@ class DBImpl : public DB {
   DBImpl& operator=(const DBImpl&) = delete;
   ~DBImpl() {
     mutex.unlock();
-    delete versions_;
   };
   State Open(const Options& options, std::string_view name,
              DB** dbptr) override;

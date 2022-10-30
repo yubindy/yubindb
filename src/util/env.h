@@ -14,25 +14,41 @@ namespace yubindb {
 class WritableFile {
  public:
   explicit WritableFile(std::string str_, int fd_)
-      : offset(0), str(std::move(str_)), fd(fd_), mainifset(Ismainset(str)) {}
+      : offset(0),
+        filestr(std::move(str_)),
+        dirstr(Dirname(filestr)),
+        fd(fd_),
+        ismainifset(Ismainset(filestr)) {}
   ~WritableFile();
   WritableFile(const WritableFile&) = delete;
   WritableFile& operator=(const WritableFile&) = delete;
 
   State Append(std::string_view ptr);
   State Append(const char* ptr, size_t size);
-  std::string_view Name() { return std::string_view(str); }
+  std::string_view Name() { return std::string_view(filestr); }
   bool Ismainset(std::string_view s);
   State Close();
   State Flush();  // flush是将我们自己的缓冲写入文件
-  State Sync();   //执行系统调用，将操作系统的缓冲区刷盘
+  State Sync(int fd, const std::string& pt);
+  State SyncDirmainifset();
+  static std::string Dirname(const std::string& filename) {
+    auto pos = filename.rfind('/');
+    if (pos == std::string::npos) {
+      return std::string(".");
+    }
+
+    assert(filename.find('/', pos + 1) == std::string::npos);
+
+    return filename.substr(0, pos);
+  }
 
  private:
   char buf_[kWritableFileBufferSize];
   size_t offset;
-  std::string str;
+  const std::string filestr;
+  const std::string dirstr;
   int fd;
-  const bool mainifset;
+  const bool ismainifset;
 };
 //顺序读取
 class ReadFile {
