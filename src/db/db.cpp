@@ -76,6 +76,6 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   return fntbatch;
 }
 State DBImpl::MakeRoomForwrite(bool force) {
-  //TODO 
+  // TODO
 }
 }  // namespace yubindb

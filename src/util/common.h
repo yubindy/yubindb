@@ -135,6 +135,5 @@ class State {
   static const char* CopyState(const char* s);
   const char* state_;
 };
-
 }  // namespace yubindb
 #endif

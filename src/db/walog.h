@@ -37,7 +37,7 @@ class walWriter {
     file.reset(file_);
     for (int i = 0; i <= kLastType; i++) {
       char t = static_cast<char>(i);
-      type_crc[i] = crc32c::Value(t, 1);
+      type_crc[i] = crc32c::Crc32c(&t, 1);
     }
   }
   ~walWriter();
