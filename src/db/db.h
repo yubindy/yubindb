@@ -46,9 +46,7 @@ class DBImpl : public DB {
   explicit DBImpl(const Options opt, const std::string dbname);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
-  ~DBImpl() {
-    mutex.unlock();
-  };
+  ~DBImpl() { mutex.unlock(); };
   State Open(const Options& options, std::string_view name,
              DB** dbptr) override;
   State Put(const WriteOptions& options, std::string_view key,
@@ -57,7 +55,7 @@ class DBImpl : public DB {
   State Write(const WriteOptions& options, WriteBatch* updates) override;
   State MakeRoomForwrite(bool force);
   State InsertInto(WriteBatch* batch, Memtable* mem);
-  WriteBatch* BuildBatchGroup(Writer** last_writer);
+  WriteBatch* BuildBatchGroup(std::shared_ptr<Writer>* last_writer);
 
  private:
   struct Writer {

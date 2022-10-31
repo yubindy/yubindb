@@ -18,14 +18,14 @@ class WriteBatch {
   void Delete(std::string_view key);
   void Clear();
   void Append(WriteBatch& source);
-  State Iterate(Handler* handler) const;
+  //State Iterate(Handler* handler) const;
   size_t mateSize() const { return mate.size(); }
   // 返回条目数
   int Count();
   // 修改条目数
   void SetCount(int n);
 
-  SequenceNum Sequence();
+  SequenceNum Sequence() { return SequenceNum(DecodeFixed64(mate.data())); }
 
   void SetSequence(SequenceNum seq);
 

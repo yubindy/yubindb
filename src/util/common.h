@@ -75,7 +75,12 @@ inline const char* GetVarint32Ptr(const char* p, const char* limit,
   }
   return GetVarint32PtrFallback(p, limit, value);
 }
-
+bool GetLengthPrefixed(std::string_view* input, std::string_view* result);
+const char* GetLengthPrefixed(const char* p, const char* limit,
+                              std::string_view* result);
+const char* GetLengthPrefixedview(const char* p, const char* limit,
+                                  std::string_view* result);
+bool GetLengthPrefixedview(std::string_view* input, std::string_view* result);
 class State {
  public:
   State() : state_(nullptr) {}

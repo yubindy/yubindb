@@ -60,15 +60,17 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
   }
   versions_->SetLastSequence(last_sequence);
 }
-WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
+WriteBatch* DBImpl::BuildBatchGroup(std::shared_ptr<Writer>* last_writer) {
   std::shared_ptr<Writer> fnt = writerque.front();
   WriteBatch* fntbatch = fnt->batch;
   uint64_t size = fntbatch->ByteSize();
   for (auto it = ++writerque.begin(); it != writerque.end(); it++) {
     if (it->get()->sync != fnt->sync) {
+      last_writer = &(*it);
       break;
     }
     if (size + it->get()->batch->ByteSize() > MaxBatchSize) {
+      last_writer = &(*it);
       break;
     }
     fntbatch->Append(*it->get()->batch);

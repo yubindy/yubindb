@@ -29,6 +29,7 @@ class WritableFile {
   bool Ismainset(std::string_view s);
   State Close();
   State Flush();  // flush是将我们自己的缓冲写入文件
+  State Sync() { return Sync(fd, filestr); }
   State Sync(int fd, const std::string& pt);
   State SyncDirmainifset();
   static std::string Dirname(const std::string& filename) {

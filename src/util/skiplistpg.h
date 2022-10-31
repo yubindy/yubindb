@@ -37,15 +37,9 @@ class Skiplist {  // skiplist package
 
   bool KeyIsAfterNode(SkiplistKey& key, node* n) const;
 
-  node* FindGreaterOrEqual(SkiplistKey& key, skiplist_node** prev) const;
-
-  node* FindLessThan(SkiplistKey& key) const;
-
-  node* FindLast() const;
-
  private:
   skiplist_raw table;
-  std::unique_ptr<Arena> arena;
+  std::unique_ptr<Arena> arena; //for new and delete
 };
 }  // namespace yubindb
 #endif
