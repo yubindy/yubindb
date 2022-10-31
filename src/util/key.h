@@ -21,7 +21,7 @@ static std::string_view ExtractUserKey(std::string_view internal_key) {
   assert(internal_key.size() >= 8);
   return std::string_view(internal_key.data(), internal_key.size() - 8);
 }
-static int cmp(std::string_view a, std::string_view b) {  // inernalkey cmp
+inline int cmp(std::string_view a, std::string_view b) {  // inernalkey cmp
   int r = strcmp(ExtractUserKey(a).data(), ExtractUserKey(b).data());
   if (r == 0) {
     const uint64_t anum = DecodeFixed64(a.data() + a.size() - 8);
@@ -47,23 +47,26 @@ class InternalKey {
  private:
   std::string Key;
 };
+// entry format is:
+//    klength  size_t
+//    userkey  char[klength]
+//    tag      uint64 ->seq+type
+//    vlength  varint32
+//    value    char[vlength]
 class SkiplistKey {  // for skiplist
  public:
-  explicit SkiplistKey(uint32_t intersize, InternalKey interkey_,
-                       std::string_view value)
-      : internalsize(intersize), interkey(interkey_), mate(value) {}
+  explicit SkiplistKey(char* p, size_t intersizelen_)
+      : str(p), interlen(intersizelen_) {}
   ~SkiplistKey() = default;
-  std::string_view getview() { return interkey.getview(); }
-  SkiplistKey& operator=(const SkiplistKey& a) {
-    internalsize = a.internalsize;
-    interkey = a.interkey;
-    mate = a.mate;
+  std::string_view getview() {
+    return std::string_view(str + sizeof(interlen), interlen);
   }
+  std::string_view gettrueview() { return std::string_view(str); }
+  SkiplistKey& operator=(const SkiplistKey& a) { str = a.str; }
 
  private:
-  uint32_t internalsize;
-  InternalKey interkey;
-  std::string_view mate;
+  char* str;
+  size_t interlen;
 };
 static bool compar(const InternalKey& a, const InternalKey& b) {}
 class LookupKey {

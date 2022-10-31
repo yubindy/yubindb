@@ -18,7 +18,6 @@
 
 namespace yubindb {
 
-class State;
 struct Options;
 struct ReadOptions;
 struct WriteOptions;
@@ -53,6 +52,8 @@ class DBImpl : public DB {
             std::string_view value) override;
   State Delete(const WriteOptions& options, std::string_view key) override;
   State Write(const WriteOptions& options, WriteBatch* updates) override;
+  State Get(const ReadOptions& options, std::string_view key,
+            std::string* value);
   State MakeRoomForwrite(bool force);
   State InsertInto(WriteBatch* batch, Memtable* mem);
   WriteBatch* BuildBatchGroup(std::shared_ptr<Writer>* last_writer);
@@ -70,6 +71,7 @@ class DBImpl : public DB {
       std::unique_lock<std::mutex> p(*mutex);
       cond.wait(p);
     }
+    void signal() { cond.notify_one(); }
 
     std::condition_variable cond;
     std::mutex* mutex;
@@ -81,8 +83,8 @@ class DBImpl : public DB {
   WriteBatch* BuildBatch(Writer** rul);
   std::mutex mutex;
   std::atomic<bool> shutting_down_;
-  std::unique_ptr<Memtable> mem_;  // now memtable
-  std::unique_ptr<Memtable> imm_;  // imemtable
+  std::shared_ptr<Memtable> mem_;  // now memtable
+  std::shared_ptr<Memtable> imm_;  // imemtable
   std::atomic<bool> has_imm_;
   uint64_t logfilenum;
   std::unique_ptr<WritableFile> logfile;

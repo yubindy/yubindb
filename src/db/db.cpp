@@ -2,6 +2,8 @@
 
 #include "spdlog/spdlog.h"
 
+class SnapshotImpl;
+
 namespace yubindb {
 State DBImpl::Open(const Options& options, std::string_view name, DB** dbptr) {
   return State();
@@ -34,9 +36,9 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
   // Compaction
   State statue = MakeRoomForwrite(updates == nullptr);  // is true,start merage
   uint64_t last_sequence = versions_->LastSqruence();
-  Writer* now_writer = w.get();
+  std::shared_ptr<Writer>* now_writer = &w;
   if (statue.ok() && updates != nullptr) {
-    WriteBatch* upt = BuildBatchGroup(&(now_writer));
+    WriteBatch* upt = BuildBatchGroup(now_writer);
     updates->SetSequence(last_sequence + 1);
     last_sequence = updates->Count();
 
@@ -53,12 +55,37 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
     if (statue.ok()) {
       statue = InsertInto(upt, mem_.get());
     }
-    mutex.unlock();
+    mutex.lock();
     if (sync_error) {
       spdlog::error("logfile sync error int {}", logfile->Name());
     }
   }
   versions_->SetLastSequence(last_sequence);
+  while (true) {
+    std::shared_ptr<Writer> ready = writerque.front();
+    writerque.pop_front();
+    if (ready.get() != w.get()) {
+      ready->state = statue;
+      ready->done = true;
+      ready->signal();
+    }
+    if (ready == *now_writer) break;
+  }  //直到last_writer通知为止。
+  return State::Ok();
+}
+State DBImpl::Get(const ReadOptions& options, std::string_view key,
+                  std::string* value) {
+  State s;
+  std::unique_lock<std::mutex> rlock(mutex);
+  SequenceNum snapshot;
+  if (options.snapshot != nullptr) {
+    snapshot = static_cast<const SnapshotImpl*>(options.snapshot)->sequence();
+  } else {
+    snapshot = versions_->LastSequence();
+  }
+  std::shared_ptr<Memtable> mem = mem_;
+  std::shared_ptr<Memtable> imm = imm_;
+  //TODO
 }
 WriteBatch* DBImpl::BuildBatchGroup(std::shared_ptr<Writer>* last_writer) {
   std::shared_ptr<Writer> fnt = writerque.front();
