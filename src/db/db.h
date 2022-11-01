@@ -13,6 +13,7 @@
 #include "../util/env.h"
 #include "../util/options.h"
 #include "memtable.h"
+#include "version_set.h"
 #include "walog.h"
 #include "writebatch.h"
 

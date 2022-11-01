@@ -3,6 +3,8 @@
 #include "spdlog/spdlog.h"
 
 class SnapshotImpl;
+class Version;
+class VersionSet;
 
 namespace yubindb {
 State DBImpl::Open(const Options& options, std::string_view name, DB** dbptr) {
@@ -85,7 +87,14 @@ State DBImpl::Get(const ReadOptions& options, std::string_view key,
   }
   std::shared_ptr<Memtable> mem = mem_;
   std::shared_ptr<Memtable> imm = imm_;
-  //TODO
+  std::shared_ptr<Version> current = versions_->Current();
+
+  bool have_stat_update = false;
+  Version::Stats stats;
+
+  rlock.unlock()
+  
+
 }
 WriteBatch* DBImpl::BuildBatchGroup(std::shared_ptr<Writer>* last_writer) {
   std::shared_ptr<Writer> fnt = writerque.front();
