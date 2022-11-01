@@ -47,6 +47,35 @@ class InternalKey {
  private:
   std::string Key;
 };
+
+class Lookey {
+ public:
+  Lookey(std::string_view key_, SequenceNum seq_);
+  std::string_view usrkey();
+
+  ~Lookey();
+  std::string_view skiplist_key() const {
+    return std::string_view(start, end - start);
+  }
+
+  // Return an internal key (suitable for passing to an internal iterator)
+  std::string_view internal_key() const {
+    return std::string_view(start + sizeof(interlen),
+                            end - start - sizeof(interlen));
+  }
+  size_t getinterlen() { return interlen; }
+  // Return the user key
+  std::string_view key() const {
+    return std::string_view(start + sizeof(interlen),
+                            end - start - sizeof(interlen) - 8);
+  }
+
+ private:
+  const char* start;  // all start
+  size_t interlen;
+  const char* end;
+  char space[200];
+};
 // entry format is:
 //    klength  size_t
 //    userkey  char[klength]
@@ -67,11 +96,6 @@ class SkiplistKey {  // for skiplist
  private:
   char* str;
   size_t interlen;
-};
-static bool compar(const InternalKey& a, const InternalKey& b) {}
-class LookupKey {
- public:
- private:
 };
 }  // namespace yubindb
 #endif

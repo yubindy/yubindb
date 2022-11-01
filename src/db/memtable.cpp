@@ -23,9 +23,9 @@ void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
   std::memcpy(p, value.data(), val_size);
   table->Insert(SkiplistKey(buf, internal_size));
 }
-// bool Memtable::Get(SequenceNum seq, Valuetype type, std::string_view key,
-//                    std::string* value, State* s) {
-//   char* buf = key.data();
-  
-// }
+bool Get(const Lookey& key, std::string* value, State* s) {
+  std::string_view skipkey = key.skiplist_key();
+  table->Seek(skipkey.data());
+}
+
 }  // namespace yubindb

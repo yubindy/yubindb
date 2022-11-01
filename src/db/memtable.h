@@ -20,8 +20,12 @@ class Memtable {
   // Iterator* NewIterator(); //TODO?
   void Add(SequenceNum seq, Valuetype type, std::string_view key,
            std::string_view value);
-  bool Get(SequenceNum seq, Valuetype type, std::string_view key,
-           std::string* value, State* s);
+  bool Get(const Lookey& key, std::string* value, State* s);
+
+  // abput iterator
+  skiplist_node* Seek(std::string_view k) { table->Seek(EncodeKey(&tmp_, k)); }
+  skiplist_node* SeekToFirst() { table.SeekToFirst(); }
+  skiplist_node* SeekToLast() { table.SeekToLast(); }
 
  private:
   std::unique_ptr<Skiplist> table;
