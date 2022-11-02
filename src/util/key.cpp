@@ -29,4 +29,8 @@ Lookey::Lookey(std::string_view key_, SequenceNum seq_) {
   str += 8;
   end = str;
 }
+uint64_t SkiplistKey::Getag() {
+  const char* p = str + sizeof(interlen) + interlen;
+  return DecodeFixed64(p);
+}
 }  // namespace yubindb

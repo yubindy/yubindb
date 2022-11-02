@@ -46,12 +46,23 @@ int main() {
     skiplist_insert(&slist, &nodes[i]->snode);
   }
   printf("size %d", skiplist_get_size(&slist));
+  struct my_node querya;
+  querya.key = 3;
+  // Find a skiplist node `cursor`.
+  skiplist_node* cursors = skiplist_find(&slist, &querya.snode);
+  if (cursors) {
+    printf("sss-%d\n", skiplist_is_valid_node(cursors));
+  } else {
+    printf("sdcscsdcd\n");
+  }
+
   for (int i = 0; i < 3; ++i) {
     // Define a query.
     struct my_node query;
     query.key = i;
     // Find a skiplist node `cursor`.
     skiplist_node* cursor = skiplist_find(&slist, &query.snode);
+    printf("sss-%d\n", skiplist_is_valid_node(cursor));
     // If `cursor` is NULL, key doesn't exist.
     if (!cursor) continue;
     // Get `my_node` from `cursor`.
@@ -62,21 +73,6 @@ int main() {
     // Other thread cannot free `cursor` until `cursor` is released.
     skiplist_release_node(cursor);
   }
-    for (int i = 0; i < 3; ++i) {
-    // Define a query.
-    struct my_node query;
-    query.key = i;
-    // Find a skiplist node `cursor`.
-    skiplist_node* cursor = skiplist_find(&slist, &query.snode);
-    // If `cursor` is NULL, key doesn't exist.
-    if (!cursor) continue;
-    // Get `my_node` from `cursor`.
-    // Note: found->snode == *cursor
-    struct my_node* found = _get_entry(cursor, struct my_node, snode);
-    printf("[point lookup] key: %d, value: %d\n", found->key, found->value);
-    // Release `cursor` (== &found->snode).
-    // Other thread cannot free `cursor` until `cursor` is released.
-    skiplist_release_node(cursor);
-  }
+  skiplist_free(&slist);
   return 0;
 }

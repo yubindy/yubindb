@@ -22,14 +22,10 @@ class Memtable {
            std::string_view value);
   bool Get(const Lookey& key, std::string* value, State* s);
 
-  // abput iterator
-  skiplist_node* Seek(std::string_view k) { table->Seek(EncodeKey(&tmp_, k)); }
-  skiplist_node* SeekToFirst() { table.SeekToFirst(); }
-  skiplist_node* SeekToLast() { table.SeekToLast(); }
-
  private:
   std::unique_ptr<Skiplist> table;
   std::unique_ptr<Arena> arena;
+  std::string tmp;
 };
 
 }  // namespace yubindb

@@ -63,7 +63,7 @@ class Lookey {
     return std::string_view(start + sizeof(interlen),
                             end - start - sizeof(interlen));
   }
-  size_t getinterlen() { return interlen; }
+  size_t getinterlen() const { return interlen; }
   // Return the user key
   std::string_view key() const {
     return std::string_view(start + sizeof(interlen),
@@ -84,17 +84,18 @@ class Lookey {
 //    value    char[vlength]
 class SkiplistKey {  // for skiplist
  public:
-  explicit SkiplistKey(char* p, size_t intersizelen_)
+  explicit SkiplistKey(const char* p, size_t intersizelen_)
       : str(p), interlen(intersizelen_) {}
   ~SkiplistKey() = default;
   std::string_view getview() {
     return std::string_view(str + sizeof(interlen), interlen);
   }
+  uint64_t Getag();
   std::string_view gettrueview() { return std::string_view(str); }
   SkiplistKey& operator=(const SkiplistKey& a) { str = a.str; }
 
  private:
-  char* str;
+  const char* str;
   size_t interlen;
 };
 }  // namespace yubindb
