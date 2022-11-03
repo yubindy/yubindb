@@ -1,0 +1,13 @@
+Diagnostics:
+  ClangTidy:
+    Add: [performance-*, modernize-*, readability-*,bugprone-*,]
+    Remove: [modernize-use-trailing-return-type]
+    CheckOptions:
+       readability-identifier-naming.VariableCase: camelBack
+  UnusedIncludes: Strict
+
+# 下面几个可以设置为True，可以在对应的地方显示函数形参名称和auto推导出的类型
+InlayHints:
+  Enabled: True
+  ParameterNames: True
+  DeducedTypes: True

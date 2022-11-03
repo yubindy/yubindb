@@ -58,6 +58,8 @@ class DBImpl : public DB {
   State MakeRoomForwrite(bool force);
   State InsertInto(WriteBatch* batch, Memtable* mem);
   WriteBatch* BuildBatchGroup(std::shared_ptr<Writer>* last_writer);
+  const Snapshot* GetSnapshot();
+  void ReleaseSnapshot(const Snapshot* snapshot);
 
  private:
   struct Writer {

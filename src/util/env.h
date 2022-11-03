@@ -46,9 +46,9 @@ class WritableFile {
  private:
   char buf_[kWritableFileBufferSize];
   size_t offset;
+  int fd;
   const std::string filestr;
   const std::string dirstr;
-  int fd;
   const bool ismainifset;
 };
 //顺序读取

@@ -20,7 +20,7 @@ class Memtable {
   // Iterator* NewIterator(); //TODO?
   void Add(SequenceNum seq, Valuetype type, std::string_view key,
            std::string_view value);
-  bool Get(const Lookey& key, std::string* value, State* s);
+  bool Get(const Lookey& key, std::string_view* value, State* s);
 
  private:
   std::unique_ptr<Skiplist> table;
