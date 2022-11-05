@@ -5,25 +5,39 @@
 // #include <map>
 // #include <memory.h>
 // #include <mutex>
+// #include <string_view>
 // #include <unordered_map>
 // namespace yubindb {
 
 // class Cache {
-// public:
-//   explicit Cache(){};
+//  public:
+//   explicit Cache() = default;
 //   virtual ~Cache() = 0;
-//   virtual void Put(const string &key, string &val) = 0;
-//   virtual bool Get(const string &key, string *val) = 0;
+//   struct Handle {};
+//   Cache(const Cache&) = delete;
+//   Cache& operator=(const Cache&) = delete;
+//   virtual Handle* Insert(std::string_view key, void* value, size_t charge,
+//                          void (*deleter)(std::string_view key,
+//                                          void* value)) = 0;
+//   virtual bool Get(std::string_view key, std::string* val) = 0;
+//   virtual void Release(Handle* handle) = 0;
 // };
 
 // class LruCache : public Cache {
-// public:
+//  public:
 //   explicit LruCache(uint64_t size_) : size(size_){};
 //   ~LruCache() = default;
-//   void Put(const string &key, string &val) override;
-//   bool Get(const string &key, string *val) override;
+//   void SetCapacity(size_t capacity) { size = capacity; }
 
-// private:
+//   // Like Cache methods, but with an extra "hash" parameter.
+//   Cache::Handle* Insert(std::string_view key, uint32_t hash, void* value,
+//                         size_t charge,
+//                         void (*deleter)(std::string_view key, void* value));
+//   Cache::Handle* Lookup(std::string_view key, uint32_t hash);
+//   void Release(Cache::Handle* handle);
+//   void Erase(std::string_view key, uint32_t hash);
+
+//  private:
 //   // void (*delete)(cosnt string &key, string &val);
 //   uint64_t size;
 //   std::mutex mut;
@@ -32,17 +46,17 @@
 //   std::unordered_map<string, std::list<kvpair>::iterator> cacheMap;
 // };
 // class ShareCache {
-// public:
+//  public:
 //   explicit ShareCache();
 //   ~ShareCache() = default;
-//   void Put(const string &key, string &val);
-//   bool Get(const string &key, string *val);
-//   uint32_t Hash(const string &key);
+//   void Put(const string& key, string& val);
+//   bool Get(const string& key, string* val);
+//   uint32_t Hash(const string& key);
 
-// private:
+//  private:
 //   using Lrucacheptr = std::shared_ptr<LruCache>;
 //   std::array<Lrucacheptr, 16> LruMap;
 // };
 
-// } // namespace yubindb
+// }  // namespace yubindb
 // #endif

@@ -1,8 +1,9 @@
 // #include "cache.h"
+
 // #include "folly/hash/Hash.h"
 // namespace yubindb {
 
-// void LruCache::Put(const string &key, string &val) {
+// void LruCache::Put(const string& key, string& val) {
 //   std::lock_guard<std::mutex> lck(mut);
 //   auto s = cacheMap.find(key);
 //   if (s != cacheMap.end()) {
@@ -18,7 +19,7 @@
 //     s->second = cacheList.begin();
 //   }
 // }
-// bool LruCache::Get(const string &key, string *val) {
+// bool LruCache::Get(const string& key, string* val) {
 //   std::lock_guard<std::mutex> lck(mut);
 //   auto s = cacheMap.find(key);
 //   if (s != cacheMap.end()) {
@@ -31,15 +32,15 @@
 //   return false;
 // }
 
-// void ShareCache::Put(const string &key, string &val) {
+// void ShareCache::Put(const string& key, string& val) {
 //   uint32_t part = Hash(key);
 //   LruMap[part]->Put(key, val);
 // }
-// bool ShareCache::Get(const string &key, string *val) {
+// bool ShareCache::Get(const string& key, string* val) {
 //   uint32_t part = Hash(key);
 //   return LruMap[part]->Get(key, val);
 // }
-// uint32_t ShareCache::Hash(const string &key) {
+// uint32_t ShareCache::Hash(const string& key) {
 //   return (folly::hash::fnv32(key.data())) & 0x000f;
 // }
-// } // namespace yubindb
+// }  // namespace yubindb

@@ -11,11 +11,11 @@ char* Arena::Alloc(size_t size) {
   return AllocateFallback(size);
 }
 char* Arena::AllocateFallback(size_t bytes) {
-  if (bytes > kBlockSize / 4) {
+  if (bytes > BlockSize / 4) {
     return AllocateNewBlock(bytes);
   }
   alloc_ptr = AllocateNewBlock(bytes);
-  alloc_remaining = kBlockSize;
+  alloc_remaining = BlockSize;
 
   char* rul = alloc_ptr;
   alloc_ptr += bytes;

@@ -44,6 +44,7 @@ class InternalKey {
     Key.append(str.data(), str.size());
     PutFixed64(&Key, parser(num, type));
   }
+  InternalKey() {}
   ~InternalKey();
   std::string_view getview() { return std::string_view(Key); }
   uint64_t parser(SequenceNum num, Valuetype type);

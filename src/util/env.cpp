@@ -103,7 +103,7 @@ State PosixEnv::NewReadFile(const std::string& filename,
                   strerror(errno));
     return State::IoError(filename.c_str());
   }
-  result = std::make_unique<ReadFile>(ReadFile(filename, fd));
+  result = std::make_unique<ReadFile>(filename, fd);
   return State::Ok();
 }
 State PosixEnv::NewWritableFile(const std::string& filename,
@@ -116,7 +116,7 @@ State PosixEnv::NewWritableFile(const std::string& filename,
                   strerror(errno));
     return State::IoError(filename.c_str());
   }
-  result = std::make_unique<WritableFile>(WritableFile(filename, fd));
+  result = std::make_unique<WritableFile>(filename, fd);
   return State::Ok();
 }
 State PosixEnv::NewAppendableFile(const std::string& filename,
@@ -129,7 +129,7 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
                   strerror(errno));
     return State::IoError(filename.c_str());
   }
-  result = std::make_unique<WritableFile>(WritableFile(filename, fd));
+  result = std::make_unique<WritableFile>(filename, fd);
   return State::Ok();
 }
 State PosixEnv::DeleteFile(const std::string& filename) {

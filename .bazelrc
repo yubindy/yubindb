@@ -9,6 +9,6 @@ build:asan --linkopt -fsanitize=address
 
 # --cxxopt=-O3 --jobs=15 -std=c++17
 build --strip=never
-build --repo_env=CC=clang++
+#build --repo_env=CC=clang++ if use clang++ skiplist lib has error
 build --cxxopt=-O3
 build --cxxopt="-std=c++17"

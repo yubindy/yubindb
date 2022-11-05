@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 namespace yubindb {
-static const int kBlockSize = 4096;
+static const int BlockSize = 4096;
 class Arena {
  public:
   Arena() : alloc_ptr(nullptr), alloc_remaining(0), memory_usage(0) {}

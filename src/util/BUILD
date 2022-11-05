@@ -8,5 +8,6 @@ cc_library(
     deps = [
          "@spdlog",
          "@crc32",
+         "@skiplist",
     ],
 )
