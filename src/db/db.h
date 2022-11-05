@@ -7,6 +7,7 @@
 #include <mutex>
 #include <set>
 #include <stdio.h>
+#include <string>
 #include <string_view>
 
 #include "../util/common.h"
@@ -82,6 +83,9 @@ class DBImpl : public DB {
   void ReleaseSnapshot(const Snapshot* snapshot);
   State Recover(VersionEdit* edit, bool* save_manifest);
   void MaybeCompaction();
+
+  const std::string dbname;
+  std::unique_ptr<FileLock> db_lock;
 
   std::mutex mutex;
   std::atomic<bool> shutting_down_;

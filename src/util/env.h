@@ -1,14 +1,17 @@
 #ifndef YUBINDB_ENV_H_
 #define YUBINDB_ENV_H_
+#include <condition_variable>
 #include <cstdio>
 #include <mutex>
+#include <queue>
+#include <set>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 #include "common.h"
 
 constexpr const size_t kWritableFileBufferSize = 64 * 1024;
+namespace yubindb {
 class Logger {
  public:
   Logger() = default;
@@ -19,7 +22,17 @@ class Logger {
   // Write format.
   virtual void Logv(const char* format, va_list ap) = 0;
 };
-namespace yubindb {
+class FileLock {
+ public:
+  FileLock(int fd, std::string filename)
+      : fd_(fd), filename_(std::move(filename)) {}
+
+  int fd() const { return fd_; }
+  const std::string& filename() const { return filename_; }
+
+  const int fd_;
+  const std::string filename_;
+};
 //顺序写入
 class WritableFile {
  public:
@@ -97,17 +110,31 @@ class PosixEnv {
   State DeleteDir(const std::string& dirname);
   State DeleteFile(const std::string& filename);
   State RenameFile(const std::string& from, const std::string& to);
-  State LockFile(const std::string& filename);
-  State UnlockFile(FileLock* lock);
+  State LockFile(const std::string& filename, std::unique_ptr<FileLock> lock);
+  State UnlockFile(std::unique_ptr<FileLock> lock);
   void Schedule(void (*background_function)(void* background_arg),
                 void* background_arg);
   void StartThread(void (*thread_main)(void* thread_main_arg),
                    void* thread_main_arg);
-  State NewLogger(const std::string& filename, Logger** result);
+  State NewLogger(const std::string& filename, std::unique_ptr<Logger> result);
 
  private:
+  struct BackgroundWorkItem {
+    explicit BackgroundWorkItem(void (*function)(void* arg), void* arg)
+        : function(function), arg(arg) {}
+
+    void (*const function)(void*);
+    void* const arg;
+  };
+  // background
   void BackgroundThreadMain();
-  std::unordered_map<int, std::string> filelock;
+  std::mutex background_work_mutex;
+  std::condition_variable background_work_cond;
+  std::queue<BackgroundWorkItem> background_work_queue;
+  bool started_background_thread;
+
+  // filemutex
+  std::set<std::string> filelock;
   std::mutex filemutex;  // lock filelock
 };
 }  // namespace yubindb

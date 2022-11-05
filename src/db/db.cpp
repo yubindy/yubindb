@@ -1,25 +1,29 @@
 #include "db.h"
 
+#include "../util/filename.h"
 #include "spdlog/spdlog.h"
 #include "version_edit.h"
-
 class SnapshotImpl;
 class Version;
 class VersionSet;
 
 namespace yubindb {
+//该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
+//目录是否存在、Current文件是否存在等。然后主要通过VersionSet::Recover与DBImpl::RecoverLogFile
+//两个方法，分别恢复其VersionSet的状态与MemTable的状态。
 State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
-  env->CreatDir(name_);
+  env->CreateDir(dbname);
+  State s = env->LockFile(LockFileName(dbname), db_lock);
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;
 
   DBImpl* impl = new DBImpl(options, name);
   impl->mutex.lock();
-  Version edit;
+  VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists
   bool save_manifest = false;
-  State s = impl->Recover(&edit, &save_manifest);
+  State s = impl->Recover(&edit, &save_manifest);  //恢复自身状态。
   if (s.ok() && impl->mem_ == nullptr) {
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();

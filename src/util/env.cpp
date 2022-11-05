@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "filename.h"
 #include "spdlog/spdlog.h"
 
 namespace yubindb {
@@ -132,6 +133,29 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
   result = std::make_unique<WritableFile>(filename, fd);
   return State::Ok();
 }
+State PosixEnv::NewLogger(const std::string& filename,
+                          std::unique_ptr<Logger> result) {
+  int fd =
+      ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+  if (fd < 0) {
+    result = nullptr;
+    spdlog::error("error newlogger: filename: {} err: {}", filename,
+                  strerror(errno));
+    return State::IoError(filename.c_str());
+  }
+
+  std::FILE* fp = ::fdopen(fd, "w");
+  if (fp == nullptr) {
+    ::close(fd);
+    result = nullptr;
+    spdlog::error("error newlogger: filename: {} err: {}", filename,
+                  strerror(errno));
+    return State::IoError(filename.c_str());
+  } else {
+    result = make_unique<Logger>(fp);
+    return State::Ok();
+  }
+}
 State PosixEnv::DeleteFile(const std::string& filename) {
   if (::unlink(filename.c_str()) != 0) {
     spdlog::error("error unlink: filename: {} err: {}", filename,
@@ -147,55 +171,66 @@ State PosixEnv::RenameFile(const std::string& from, const std::string& to) {
   }
   return State::Ok();
 }
-// State PosixEnv::LockFile(const std::string& filename) {
-//   int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
-//   if (fd < 0) {
-//     spdlog::error("error open : filename: {} err: {}", filename,
-//                   strerror(errno));
-//     return State::IoError(filename.c_str());
-//   }
-//   {
-//     filemutex.lock();
-//     filelock[fd] = filename;
-//     filemutex.unlock();
-//   }
-//   struct ::flock file_lock_info;
-//   std::memset(&file_lock_info, 0, sizeof(file_lock_info));
-//   file_lock_info.l_type = F_WRLCK;
-//   file_lock_info.l_whence = SEEK_SET;
-//   file_lock_info.l_start = 0;
-//   file_lock_info.l_len = 0;
-//   errno = 0;
-//   if (::fcntl(fd, F_SETLK, &file_lock_info) == -1) {
-//     ::close(fd);
-//     filemutex.lock();
-//     filelock.erase(fd);
-//     filemutex.unlock();
-//     spdlog::error("error fcntl : filename: {} err: {}", filename,
-//                   strerror(errno));
-//     return State::IoError(filename);
-//   }
+State PosixEnv::LockFile(const std::string& filename,
+                         std::unique_ptr<FileLock> lock) {
+  int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+  if (fd < 0) {
+    spdlog::error("error open : filename: {} err: {}", filename,
+                  strerror(errno));
+    return State::IoError(filename.c_str());
+  }
+  {
+    filemutex.lock();
+    filelock.insert(filename);
+    filemutex.unlock();
+  }
+  struct ::flock file_lock_info;
+  std::memset(&file_lock_info, 0, sizeof(file_lock_info));
+  file_lock_info.l_type = F_WRLCK;
+  file_lock_info.l_whence = SEEK_SET;
+  file_lock_info.l_start = 0;
+  file_lock_info.l_len = 0;
+  errno = 0;
+  if (::fcntl(fd, F_SETLK, &file_lock_info) == -1) {
+    ::close(fd);
+    filemutex.lock();
+    filelock.erase(filename);
+    filemutex.unlock();
+    spdlog::error("error fcntl : filename: {lock+} err: {}", filename,
+                  strerror(errno));
+    return State::IoError(filename);
+  }
 
-//   return State::Ok();
-// }
-// State PosixEnv::UnlockFile(const std::string& filename) {
-//   struct ::flock file_lock_info;
-//   std::memset(&file_lock_info, 0, sizeof(file_lock_info));
-//   file_lock_info.l_type = F_WRLCK;
-//   file_lock_info.l_whence = SEEK_SET;
-//   file_lock_info.l_start = 0;
-//   file_lock_info.l_len = 0;
-//   errno = 0;
-//   if (::fcntl(fd, F_SETLK, &file_lock_info) == -1) {
-//     ::close(fd);
-//     filemutex.lock();
-//     filelock.erase(filename);
-//     filemutex.unlock();
-//     spdlog::error("error fcntl : filename: {} err: {}", filename,
-//                   strerror(errno));
-//     return State::IoError(filename);
-//   }
+  lock = make_unique<FileLock>(fd, filename);
+  return State::Ok();
+}
+State PosixEnv::UnlockFile(std::unique_ptr<FileLock> lock) {
+  struct ::flock file_lock_info;
+  std::memset(&file_lock_info, 0, sizeof(file_lock_info));
+  file_lock_info.l_type = F_WRLCK;
+  file_lock_info.l_whence = SEEK_SET;
+  file_lock_info.l_start = 0;
+  file_lock_info.l_len = 0;
+  errno = 0;
+  if (::fcntl((*lock).fd_, F_SETLK, &file_lock_info) == -1) {
+    ::close((*lock).fd_);
+    filemutex.lock();
+    filelock.erase((*lock).filename_);
+    filemutex.unlock();
+    spdlog::error("error fcntl : filename: {} err: {}", (*lock).filename_,
+                  strerror(errno));
+    return State::IoError((*lock).filename_);
+  }
+  lock.reset();
+  return State::Ok();
+}
+void Schedule(void (*background_function)(void* background_arg),
+              void* background_arg) {}
+void StartThread(void (*thread_main)(void* thread_main_arg),
+                 void* thread_main_arg) {
+  std::thread threads(thread_main, thread_main_arg);
+  thread.detach();
+}
 
-// return State::Ok();
-//}
+void BackgroundThreadMain() {}
 }  // namespace yubindb
