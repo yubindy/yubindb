@@ -4,6 +4,7 @@
 #include <memory.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 
 #include "filename.h"
@@ -152,7 +153,7 @@ State PosixEnv::NewLogger(const std::string& filename,
                   strerror(errno));
     return State::IoError(filename.c_str());
   } else {
-    result = make_unique<Logger>(fp);
+    result = std::make_unique<Logger>(fp);
     return State::Ok();
   }
 }
@@ -201,7 +202,7 @@ State PosixEnv::LockFile(const std::string& filename,
     return State::IoError(filename);
   }
 
-  lock = make_unique<FileLock>(fd, filename);
+  lock = std::make_unique<FileLock>(fd, filename);
   return State::Ok();
 }
 State PosixEnv::UnlockFile(std::unique_ptr<FileLock> lock) {
@@ -224,13 +225,41 @@ State PosixEnv::UnlockFile(std::unique_ptr<FileLock> lock) {
   lock.reset();
   return State::Ok();
 }
-void Schedule(void (*background_function)(void* background_arg),
-              void* background_arg) {}
-void StartThread(void (*thread_main)(void* thread_main_arg),
-                 void* thread_main_arg) {
+void PosixEnv::Schedule(void (*background_function)(void* background_arg),
+                        void* background_arg) {
+  background_work_mutex.lock();
+
+  if (!started_background_thread) {
+    started_background_thread = true;
+    std::thread background_thread(PosixEnv::BackgroundThread, *this);
+    background_thread.detach();
+  }
+
+  if (background_work_queue.empty()) {
+    background_work_cond.notify_one();
+  }
+  background_work_queue.emplace(background_function, background_arg);
+  background_work_mutex.unlock();
+}
+void PosixEnv::StartThread(void (*thread_main)(void* thread_main_arg),
+                           void* thread_main_arg) {
   std::thread threads(thread_main, thread_main_arg);
-  thread.detach();
+  threads.detach();
 }
 
-void BackgroundThreadMain() {}
+void PosixEnv::BackgroundThreadMain() {
+  std::unique_lock<std::mutex> backwork(background_work_mutex);
+  while (true) {
+    backwork.lock();
+    while (background_work_queue.empty()) {
+      background_work_cond.wait(backwork);
+    }
+    auto background_work_function = background_work_queue.front().function;
+    void* background_work_arg = background_work_queue.front().arg;
+    background_work_queue.pop();
+
+    backwork.unlock();
+    background_work_function(background_work_arg);
+  }
+}
 }  // namespace yubindb

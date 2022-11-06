@@ -8,12 +8,55 @@ class Version;
 class VersionSet;
 
 namespace yubindb {
+State DBImpl::NewDB() {
+  VersionEdit new_db;
+  new_db.SetLogNumber(0);
+  new_db.SetNextFile(2);
+  new_db.SetLastSequence(0);
+
+  const std::string manifest = DescriptorFileName(dbname, 1);
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(manifest, file);
+  if (!s.ok()) {
+    return s;
+  }
+  {
+    walWriter log(file);
+    std::string record;
+    new_db.EncodeTo(&record);
+    s = log.AddRecord(record);
+    if (s.ok()) {
+      s = file->Close();
+    }
+  }
+  if (s.ok()) {
+    // Make "CURRENT" file that points to the new manifest file.
+    s = SetCurrentFile(env, dbname, 1);
+  } else {
+    env->DeleteFile(manifest);
+  }
+  return s;
+}
 //该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
 //目录是否存在、Current文件是否存在等。然后主要通过VersionSet::Recover与DBImpl::RecoverLogFile
 //两个方法，分别恢复其VersionSet的状态与MemTable的状态。
 State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   env->CreateDir(dbname);
   State s = env->LockFile(LockFileName(dbname), db_lock);
+  if (!s.ok()) {
+    return s;
+  }
+  if (!env->FileExists(CurrentFileName(dbname))) {
+    s = NewDB();
+    if (!s.ok()) {
+      return s;
+    }
+  }
+  s = versions_->Recover(save_manifest);
+  if(!s.ok()){
+    return s;
+  }
+   SequenceNum max_sequence(0);
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;

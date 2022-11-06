@@ -16,14 +16,14 @@ void PutFixed32(std::string* dst, uint32_t value);
 void PutFixed64(std::string* dst, uint64_t value);
 void PutVarint32(std::string* dst, uint32_t value);
 void PutVarint64(std::string* dst, uint64_t value);
-void PutLengthPrefixed(
+void PutLengthPrefixedview(
     std::string* dst,
-    const std::string_view& value);  // dst： 长度(编码后) + value
+    std::string_view& value);  // dst： 长度(编码后) + value
 
 //解码
 bool GetVarint32(std::string_view* input, uint32_t* value);
 bool GetVarint64(std::string_view* input, uint64_t* value);
-bool GetLengthPrefixed(std::string_view* input, std::string_view* result);
+bool GetLengthPrefixedview(std::string_view* input, std::string_view* result);
 
 //解码变长整形最基础函数。
 const char* GetVarint32Ptr(const char* p, const char* limit, uint32_t* v);

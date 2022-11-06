@@ -16,13 +16,21 @@ struct FileMate {  // file mate
   InternalKey smallest;
   InternalKey largest;
 };
+enum Tag {
+  kLogNumber = 0,
+  kNextFileNumber = 1,
+  kLastSequence = 2,
+  kCompactPointer = 3,
+  kDeletedFile = 4,
+  kNewFile = 5,
+};
+
 class VersionEdit {
  public:
   VersionEdit() { Clear(); }
   ~VersionEdit() = default;
 
   void Clear();
-
   void SetLogNumber(uint64_t num) {
     has_log_number = true;
     log_number = num;
@@ -39,9 +47,8 @@ class VersionEdit {
     has_last_sequence = true;
     last_sequence = seq;
   }
-  // Add the specified file at the specified number.
-  // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
-  // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
+  // 在指定编号处添加指定文件。
+  // “smallest”和“largest”是文件中最小和最大的键
   void AddFile(int level, uint64_t file, uint64_t file_size,
                const InternalKey& smallest, const InternalKey& largest) {
     FileMate f;

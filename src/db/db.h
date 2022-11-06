@@ -83,7 +83,7 @@ class DBImpl : public DB {
   void ReleaseSnapshot(const Snapshot* snapshot);
   State Recover(VersionEdit* edit, bool* save_manifest);
   void MaybeCompaction();
-
+  State NewDB();
   const std::string dbname;
   std::unique_ptr<FileLock> db_lock;
 

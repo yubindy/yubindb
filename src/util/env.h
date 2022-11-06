@@ -117,6 +117,9 @@ class PosixEnv {
   void StartThread(void (*thread_main)(void* thread_main_arg),
                    void* thread_main_arg);
   State NewLogger(const std::string& filename, std::unique_ptr<Logger> result);
+  bool FileExists(const std::string& filename) {
+    return ::access(filename.c_str(), F_OK) == 0;
+  }
 
  private:
   struct BackgroundWorkItem {
@@ -128,6 +131,7 @@ class PosixEnv {
   };
   // background
   void BackgroundThreadMain();
+  static void BackgroundThread(PosixEnv* env) { env->BackgroundThreadMain(); }
   std::mutex background_work_mutex;
   std::condition_variable background_work_cond;
   std::queue<BackgroundWorkItem> background_work_queue;
