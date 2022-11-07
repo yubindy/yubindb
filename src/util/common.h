@@ -18,7 +18,7 @@ void PutVarint32(std::string* dst, uint32_t value);
 void PutVarint64(std::string* dst, uint64_t value);
 void PutLengthPrefixedview(
     std::string* dst,
-    std::string_view& value);  // dst： 长度(编码后) + value
+    std::string_view value);  // dst： 长度(编码后) + value
 
 //解码
 bool GetVarint32(std::string_view* input, uint32_t* value);

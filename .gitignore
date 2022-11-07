@@ -65,7 +65,7 @@ bazel-out
 bazel-testlogs
 
 # vscode
-.vscode
+#.vscode
 
 # vimprj
 .vimprj/
@@ -84,4 +84,3 @@ runlog/
 __not_found__
 
 # thirdparties
-

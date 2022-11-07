@@ -1,5 +1,8 @@
 #include <assert.h>
 #include <string>
+
+#include "common.h"
+#include "env.h"
 namespace yubindb {
 static std::string MakeFileName(const std::string& dbname, uint64_t number,
                                 const char* suffix) {
@@ -25,7 +28,7 @@ std::string SSTTableFileName(const std::string& dbname, uint64_t number) {
 }
 std::string VSSTTableFileName(const std::string& dbname, uint64_t number) {
   assert(number > 0);
-  return MakeFileName(dbname, number, "v_sst");
+  return MakeFileName(dbname, number, "v_sst");  // for key sum value division
 }
 std::string DescriptorFileName(const std::string& dbname, uint64_t number) {
   assert(number > 0);
@@ -48,5 +51,22 @@ std::string TempFileName(const std::string& dbname, uint64_t number) {
 
 std::string InfoLogFileName(const std::string& dbname) {
   return dbname + "/LOG";
+}
+State SetCurrentFile(
+    PosixEnv* env, const std::string& dbname,
+    uint64_t file_number) {  //将CURRENT文件指向当前的新的manifest文件
+  std::string mainifset = DescriptorFileName(dbname, file_number);
+  std::string_view fileview(mainifset);
+  fileview.remove_prefix(dbname.size() + 1);
+  std::string tmp = TempFileName(dbname, file_number);
+  std::stirng p(fileview);
+  State s = WriteStringToFile(env, p + "\n", tmp);
+  if (s.ok()) {
+    s = env->RenameFile(tmp, CurrentFileName(dbname));
+  }
+  if (!s.ok()) {
+    env->DeleteFile(tmp);
+  }
+  return s;
 }
 }  // namespace yubindb

@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 
+#include "../util/cache.h"
 #include "../util/common.h"
 #include "../util/env.h"
 #include "../util/options.h"
@@ -26,7 +27,6 @@ struct Writer;
 class VersionSet;
 class SnapshotList;
 
-const static int kNumLevels = 7;
 const static size_t MaxBatchSize = 1024;
 class DB {
  public:
@@ -36,12 +36,10 @@ class DB {
                     std::string_view value) = 0;
   virtual State Delete(const WriteOptions& options, std::string_view key) = 0;
   virtual State Write(const WriteOptions& options, WriteBatch* updates) = 0;
-
- private:
 };
 class DBImpl : public DB {
  public:
-  explicit DBImpl(const Options& opt, const std::string dbname);
+  explicit DBImpl(const Options& opt, const std::string& dbname);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
   ~DBImpl() { mutex.unlock(); };
@@ -77,33 +75,40 @@ class DBImpl : public DB {
     State state;
     WriteBatch* batch;
   };
+  State NewDB();
   WriteBatch* BuildBatch(Writer** rul);
   WriteBatch* BuildBatchGroup(std::shared_ptr<DBImpl::Writer>* last_writer);
   State MakeRoomForwrite(bool force);
   void ReleaseSnapshot(const Snapshot* snapshot);
   State Recover(VersionEdit* edit, bool* save_manifest);
+  void DeleteObsoleteFiles();
   void MaybeCompaction();
-  State NewDB();
+  void BackgroundCall();
+  void BackgroundCompaction();
+
   const std::string dbname;
+  const Options opts;
   std::unique_ptr<FileLock> db_lock;
 
   std::mutex mutex;
-  std::atomic<bool> shutting_down_;
   std::shared_ptr<Memtable> mem_;  // now memtable
   std::shared_ptr<Memtable> imm_;  // imemtable
   std::atomic<bool> has_imm_;
+
   uint64_t logfilenum;
   std::unique_ptr<WritableFile> logfile;
   std::unique_ptr<walWriter> logwrite;
   std::deque<std::shared_ptr<Writer>> writerque;
+  std::unique_ptr<WriteBatch> batch;
 
-  SnapshotList* snapshots_;
+  std::condition_variable background_work_finished_signal;
   std::set<uint64_t> pending_outputs_;
+  std::atomic<bool> shutting_down_;
   bool background_compaction_;
-  VersionSet* const versions_;
+  std::unique_ptr<const VersionSet> versions_;
+  State bg_error;
   State stats_[kNumLevels];
-  PosixEnv* env;
+  std::unique_ptr<PosixEnv> env;
 };
 }  // namespace yubindb
-
 #endif

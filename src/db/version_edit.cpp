@@ -52,6 +52,14 @@ void VersionEdit::EncodeTo(std::string* dst) const {
     PutLengthPrefixedview(dst, f.largest.getview());
   }
 }
+static bool GetInternalKey(std::string_view* input, InternalKey* dst) {
+  std::string_view str;
+  if (GetLengthPrefixedview(input, &str)) {
+    return dst->DecodeFrom(str);
+  } else {
+    return false;
+  }
+}
 static bool GetLevel(std::string_view* input, int* level) {
   uint32_t v;
   if (GetVarint32(input, &v) && v < kNumLevels) {
@@ -78,30 +86,22 @@ State VersionEdit::DecodeFrom(std::string_view src) {
         if (GetVarint64(&input, &log_number)) {
           has_log_number = true;
         } else {
-          msg = "log number";
+          msg = "VersionEdit : log number";
         }
         break;
       case kNextFileNumber:
         if (GetVarint64(&input, &next_file_number)) {
           has_next_file_number = true;
         } else {
-          msg = "next file number";
-        }
-        break
-
-            case kLastSequence : if (GetVarint64(&input, &last_sequence)) {
-          has_last_sequence = true;
-        }
-        else {
-          msg = "last sequence number";
+          msg = "VersionEdit : next file number";
         }
         break;
 
-      case kCompactPointer:
-        if (GetLevel(&input, &level) && GetInternalKey(&input, &key)) {
-          compact_pointers_.push_back(std::make_pair(level, key));
+      case kLastSequence:
+        if (GetVarint64(&input, &last_sequence)) {
+          has_last_sequence = true;
         } else {
-          msg = "compaction pointer";
+          msg = "VersionEdit : last sequence number";
         }
         break;
 
@@ -109,78 +109,36 @@ State VersionEdit::DecodeFrom(std::string_view src) {
         if (GetLevel(&input, &level) && GetVarint64(&input, &number)) {
           deleted_files.insert(std::make_pair(level, number));
         } else {
-          msg = "deleted file";
+          msg = "VersionEdit : deleted file";
         }
         break;
 
       case kNewFile:
-        if (GetLevel(&input, &level) && GetVarint64(&input, &f.number) &&
+        if (GetLevel(&input, &level) && GetVarint64(&input, &f.num) &&
             GetVarint64(&input, &f.file_size) &&
             GetInternalKey(&input, &f.smallest) &&
             GetInternalKey(&input, &f.largest)) {
-          new_files_.push_back(std::make_pair(level, f));
+          new_files.push_back(std::make_pair(level, f));
         } else {
-          msg = "new-file entry";
+          msg = "VersionEdit : new-file entry";
         }
         break;
 
       default:
-        msg = "unknown tag";
+        msg = "VersionEdit : unknown tag";
         break;
     }
   }
 
   if (msg == nullptr && !input.empty()) {
-    msg = "invalid tag";
+    msg = "VersionEdit : invalid tag";
   }
 
   State result;
   if (msg != nullptr) {
-    result = Status::Corruption("VersionEdit", msg);
+    result = State::Corruption(msg);
+    spdlog::error(msg);
   }
   return result;
-}
-std::string VersionEdit::DebugString() const {
-  std::string r;
-  r.append("VersionEdit {");
-  if (has_log_number) {
-    r.append("\n  LogNumber: ");
-    AppendNumberTo(&r, log_number);
-  }
-  if (has_next_file_number) {
-    r.append("\n  NextFile: ");
-    AppendNumberTo(&r, next_file_number);
-  }
-  if (has_last_sequence) {
-    r.append("\n  LastSeq: ");
-    AppendNumberTo(&r, last_sequence);
-  }
-  for (size_t i = 0; i < compact_pointers.size(); i++) {
-    r.append("\n  CompactPointer: ");
-    AppendNumberTo(&r, compact_pointers[i].first);
-    r.append(" ");
-    r.append(compact_pointers[i].second.DebugString());
-  }
-  for (const auto& deleted_files_kvp : deleted_files) {
-    r.append("\n  DeleteFile: ");
-    AppendNumberTo(&r, deleted_files_kvp.first);
-    r.append(" ");
-    AppendNumberTo(&r, deleted_files_kvp.second);
-  }
-  for (size_t i = 0; i < new_files.size(); i++) {
-    const FileMetaData& f = new_files[i].second;
-    r.append("\n  AddFile: ");
-    AppendNumberTo(&r, new_files_[i].first);
-    r.append(" ");
-    AppendNumberTo(&r, f.number);
-    r.append(" ");
-    AppendNumberTo(&r, f.file_size);
-    r.append(" ");
-    r.append(f.smallest.DebugString());
-    r.append(" .. ");
-    r.append(f.largest.DebugString());
-  }
-  r.append("\n}\n");
-  return r;
 }
 }  // namespace yubindb

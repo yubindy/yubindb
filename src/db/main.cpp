@@ -1,14 +1,13 @@
 #include <assert.h>
 #include <iostream>
-#include <string.h>
+#include <string>
 
 #include "db.h"
 
 int main() {
   yubindb::DB* db;
-  yubindb::Options options;
-  options.create_if_missing = true;
-  yubindb::State s = yubindb::DB::Open(options, "/tmp/testdb", &db);
+  yubindb::Options opt;
+  yubindb::State s = yubindb::DBImpl::Open(opt, "/tmp/testdb", &db);
   assert(s.ok());
 
   // write key1,value1
@@ -17,5 +16,5 @@ int main() {
 
   s = db->Put(yubindb::WriteOptions(), key, value);
   assert(s.ok());
-  return 0; 
+  return 0;
 }

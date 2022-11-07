@@ -1,13 +1,16 @@
-// #ifndef YUBINDB_CACHE_H_
-// #define YUBINDB_CACHE_H_
-// #include <array>
-// #include <list>
-// #include <map>
-// #include <memory.h>
-// #include <mutex>
-// #include <string_view>
-// #include <unordered_map>
-// namespace yubindb {
+#ifndef YUBINDB_CACHE_H_
+#define YUBINDB_CACHE_H_
+#include <list>
+#include <map>
+#include <memory.h>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
+#include "env.h"
+#include "options.h"
+namespace yubindb {
 
 // class Cache {
 //  public:
@@ -57,6 +60,23 @@
 //   using Lrucacheptr = std::shared_ptr<LruCache>;
 //   std::array<Lrucacheptr, 16> LruMap;
 // };
+// class Cache::Handle;
+class Handle;
+class TableCache {
+ public:
+  TableCache(const std::string dbname, const Options opt, int erties);
+  ~TableCache();
+  State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,
+            std::string_view key, void* arg,
+            void (*handle_rul)(void*, std::string_view a, std::string_view b));
+  void Evict(uint64_t file_number);
 
-// }  // namespace yubindb
-// #endif
+ private:
+  State FindTable(uint64_t file_num, uint64_t file_size, Handle**);
+
+  PosixEnv* env;
+  const std::string dbname;
+  const Options opt;
+};
+}  // namespace yubindb
+#endif

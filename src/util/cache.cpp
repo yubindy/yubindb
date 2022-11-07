@@ -1,6 +1,5 @@
 // #include "cache.h"
 
-// #include "folly/hash/Hash.h"
 // namespace yubindb {
 
 // void LruCache::Put(const string& key, string& val) {

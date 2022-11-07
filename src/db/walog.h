@@ -33,7 +33,6 @@ class Record {
 class walWriter {
  public:
   explicit walWriter(WritableFile* file_) : block_offset(0) {
-    file.reset();
     file.reset(file_);
     for (int i = 0; i <= kLastType; i++) {
       char t = static_cast<char>(i);

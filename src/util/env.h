@@ -2,26 +2,21 @@
 #define YUBINDB_ENV_H_
 #include <condition_variable>
 #include <cstdio>
+#include <fcntl.h>
 #include <mutex>
 #include <queue>
 #include <set>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 
 #include "common.h"
 
 constexpr const size_t kWritableFileBufferSize = 64 * 1024;
 namespace yubindb {
-class Logger {
- public:
-  Logger() = default;
+// class Logger{
 
-  Logger(const Logger&) = delete;
-  Logger& operator=(const Logger&) = delete;
-  virtual ~Logger();
-  // Write format.
-  virtual void Logv(const char* format, va_list ap) = 0;
-};
+// }
 class FileLock {
  public:
   FileLock(int fd, std::string filename)
@@ -55,16 +50,6 @@ class WritableFile {
   State Sync() { return Sync(fd, filestr); }
   State Sync(int fd, const std::string& pt);
   State SyncDirmainifset();
-  static std::string Dirname(const std::string& filename) {
-    auto pos = filename.rfind('/');
-    if (pos == std::string::npos) {
-      return std::string(".");
-    }
-
-    assert(filename.find('/', pos + 1) == std::string::npos);
-
-    return filename.substr(0, pos);
-  }
 
  private:
   char buf_[kWritableFileBufferSize];
@@ -102,7 +87,7 @@ class PosixEnv {
   // State NewRandomAccessFile(const std::string& filename,
   //                           RandomAccessFile** result);
   State NewWritableFile(const std::string& filename,
-                        std::unique_ptr<WritableFile> result);
+                        std::unique_ptr<WritableFile>& result);
   State NewAppendableFile(const std::string& filename,
                           std::unique_ptr<WritableFile> result);
   State GetFileSize(const std::string& filename, uint64_t* size);
@@ -116,7 +101,8 @@ class PosixEnv {
                 void* background_arg);
   void StartThread(void (*thread_main)(void* thread_main_arg),
                    void* thread_main_arg);
-  State NewLogger(const std::string& filename, std::unique_ptr<Logger> result);
+  // State NewLogger(const std::string& filename, std::unique_ptr<Logger>
+  // result);
   bool FileExists(const std::string& filename) {
     return ::access(filename.c_str(), F_OK) == 0;
   }

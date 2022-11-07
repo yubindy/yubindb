@@ -46,8 +46,13 @@ class InternalKey {
   }
   InternalKey() {}
   ~InternalKey();
-  std::string_view getview() { return std::string_view(Key); }
+  const std::string_view getview() const { return std::string_view(Key); }
   uint64_t parser(SequenceNum num, Valuetype type);
+
+  bool DecodeFrom(std::string_view s) {
+    Key.assign(s.data(), s.size());
+    return !Key.empty();
+  }
 
  private:
   std::string Key;

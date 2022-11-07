@@ -35,10 +35,6 @@ class VersionEdit {
     has_log_number = true;
     log_number = num;
   }
-  void SetPrevLogNumber(uint64_t num) {
-    has_prev_log_number = true;
-    prev_log_number = num;
-  }
   void SetNextFile(uint64_t num) {
     has_next_file_number = true;
     next_file_number = num;
@@ -65,9 +61,7 @@ class VersionEdit {
   }
 
   void EncodeTo(std::string* dst) const;
-  State DecodeFrom(std::string_view& src);
-
-  std::string DebugString() const;
+  State DecodeFrom(std::string_view src);
 
  private:
   friend class VersionSet;
@@ -75,12 +69,10 @@ class VersionEdit {
   typedef std::set<std::pair<int, uint64_t>> DeletedFileSet;
 
   uint64_t log_number;
-  uint64_t prev_log_number;
   uint64_t next_file_number;
   SequenceNum last_sequence;
   bool has_comparator;
   bool has_log_number;
-  bool has_prev_log_number;
   bool has_next_file_number;
   bool has_last_sequence;
 

@@ -11,6 +11,7 @@
 #include "spdlog/spdlog.h"
 
 namespace yubindb {
+void Logv(const char* format, va_list ap) {}
 State WritableFile::Append(std::string_view ptr) {
   return Append(ptr.data(), ptr.size());
 }
@@ -109,7 +110,7 @@ State PosixEnv::NewReadFile(const std::string& filename,
   return State::Ok();
 }
 State PosixEnv::NewWritableFile(const std::string& filename,
-                                std::unique_ptr<WritableFile> result) {
+                                std::unique_ptr<WritableFile>& result) {
   int fd =
       ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
@@ -134,29 +135,30 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
   result = std::make_unique<WritableFile>(filename, fd);
   return State::Ok();
 }
-State PosixEnv::NewLogger(const std::string& filename,
-                          std::unique_ptr<Logger> result) {
-  int fd =
-      ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-  if (fd < 0) {
-    result = nullptr;
-    spdlog::error("error newlogger: filename: {} err: {}", filename,
-                  strerror(errno));
-    return State::IoError(filename.c_str());
-  }
+// State PosixEnv::NewLogger(const std::string& filename,
+//                           std::unique_ptr<Logger> result) {
+//   int fd =
+//       ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC,
+//       0644);
+//   if (fd < 0) {
+//     result = nullptr;
+//     spdlog::error("error newlogger: filename: {} err: {}", filename,
+//                   strerror(errno));
+//     return State::IoError(filename.c_str());
+//   }
 
-  std::FILE* fp = ::fdopen(fd, "w");
-  if (fp == nullptr) {
-    ::close(fd);
-    result = nullptr;
-    spdlog::error("error newlogger: filename: {} err: {}", filename,
-                  strerror(errno));
-    return State::IoError(filename.c_str());
-  } else {
-    result = std::make_unique<Logger>(fp);
-    return State::Ok();
-  }
-}
+//   std::FILE* fp = ::fdopen(fd, "w");
+//   if (fp == nullptr) {
+//     ::close(fd);
+//     result = nullptr;
+//     spdlog::error("error newlogger: filename: {} err: {}", filename,
+//                   strerror(errno));
+//     return State::IoError(filename.c_str());
+//   } else {
+//     result = std::make_unique<Logger>(fp);
+//     return State::Ok();
+//   }
+// }
 State PosixEnv::DeleteFile(const std::string& filename) {
   if (::unlink(filename.c_str()) != 0) {
     spdlog::error("error unlink: filename: {} err: {}", filename,
@@ -231,7 +233,7 @@ void PosixEnv::Schedule(void (*background_function)(void* background_arg),
 
   if (!started_background_thread) {
     started_background_thread = true;
-    std::thread background_thread(PosixEnv::BackgroundThread, *this);
+    std::thread background_thread(PosixEnv::BackgroundThread, this);
     background_thread.detach();
   }
 
@@ -261,5 +263,22 @@ void PosixEnv::BackgroundThreadMain() {
     backwork.unlock();
     background_work_function(background_work_arg);
   }
+}
+static State WriteStringToFile(PosixEnv* env, std::string_view data,
+                               const std::string& fname, bool sync) {
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = file->Append(data);
+  if (s.ok() && sync) {
+    s = file->Sync();
+  }
+  file.reset();
+  if (!s.ok()) {
+    env->DeleteFile(fname);
+  }
+  return s;
 }
 }  // namespace yubindb
