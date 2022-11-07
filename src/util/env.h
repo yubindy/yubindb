@@ -14,9 +14,23 @@
 
 constexpr const size_t kWritableFileBufferSize = 64 * 1024;
 namespace yubindb {
-// class Logger{
-
-// }
+static State WriteStringToFile(PosixEnv* env, std::string_view data,
+                               const std::string& fname, bool sync) {
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = file->Append(data);
+  if (s.ok() && sync) {
+    s = file->Sync();
+  }
+  file.reset();
+  if (!s.ok()) {
+    env->DeleteFile(fname);
+  }
+  return s;
+}
 class FileLock {
  public:
   FileLock(int fd, std::string filename)

@@ -1,8 +1,8 @@
 #include "version_set.h"
 namespace yubindb {
 VersionSet::VersionSet(const std::string& dbname_, const Options* options,
-                       TableCache* table_cache)
-    : env_(&options->env),
+                       std::unique_ptr<TableCache>& table_cache)
+    : env_(options->env),
       dbname(dbname_),
       ops(options),
       next_file_number(2),

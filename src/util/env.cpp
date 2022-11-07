@@ -264,23 +264,6 @@ void PosixEnv::BackgroundThreadMain() {
     background_work_function(background_work_arg);
   }
 }
-static State WriteStringToFile(PosixEnv* env, std::string_view data,
-                               const std::string& fname, bool sync) {
-  std::unique_ptr<WritableFile> file;
-  State s = env->NewWritableFile(fname, file);
-  if (!s.ok()) {
-    return s;
-  }
-  s = file->Append(data);
-  if (s.ok() && sync) {
-    s = file->Sync();
-  }
-  file.reset();
-  if (!s.ok()) {
-    env->DeleteFile(fname);
-  }
-  return s;
-}
 static std::string Dirname(const std::string& filename) {
   std::string::size_type separator_pos = filename.rfind('/');
   if (separator_pos == std::string::npos) {

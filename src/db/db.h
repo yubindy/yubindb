@@ -39,7 +39,7 @@ class DB {
 };
 class DBImpl : public DB {
  public:
-  explicit DBImpl(const Options& opt, const std::string& dbname);
+  explicit DBImpl(const Options* opt, const std::string& dbname);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
   ~DBImpl();
@@ -87,7 +87,7 @@ class DBImpl : public DB {
   void BackgroundCompaction();
 
   const std::string dbname;
-  const Options opts;
+  const Options* opts;
   std::unique_ptr<FileLock> db_lock;
 
   std::mutex mutex;

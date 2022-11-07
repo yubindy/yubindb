@@ -7,6 +7,7 @@ const static int kNumLevels = 7;
 struct Options {
   // Create an Options object with default values for all fields.
   Options() = default;
+  ~Options() = default;
   bool paranoid_checks = false;
 
   int max_open_files = 1000;

@@ -39,7 +39,7 @@ State DBImpl::NewDB() {
   }
   return s;
 }
-DBImpl::DBImpl(const Options& opt, const std::string& dbname)
+DBImpl::DBImpl(const Options* opt, const std::string& dbname)
     : env(new PosixEnv),
       opts(opt),
       dbname(dbname),
@@ -54,7 +54,7 @@ DBImpl::DBImpl(const Options& opt, const std::string& dbname)
       logwrite(nullptr),
       batch(new WriteBatch),
       background_compaction_(false),
-      versions_(new VersionSet(dbname, &opt, table_cache)) {}
+      versions_(new VersionSet(dbname, opt, table_cache)) {}
 DBImpl::~DBImpl() {
   std::unique_lock<std::mutex> lk(mutex);
   shutting_down_.store(true, std::memory_order_release);
@@ -63,7 +63,7 @@ DBImpl::~DBImpl() {
   }
   lk.unlock();
   if (db_lock != nullptr) {
-    env->UnlockFile(db_lock.get());
+    env->UnlockFile(db_lock);
   }
 }
 //该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
@@ -252,7 +252,7 @@ State DBImpl::MakeRoomForwrite(bool force) {
     if (!bg_error.ok()) {
       s = bg_error;
       break;
-    } else if (allow_delay && versions_->NumLeve) {
+    } else if (allow_delay && versions_->NumLevelFiles()) {
     }
   }
 }

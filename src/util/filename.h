@@ -60,7 +60,7 @@ State SetCurrentFile(
   fileview.remove_prefix(dbname.size() + 1);
   std::string tmp = TempFileName(dbname, file_number);
   std::string p(fileview);
-  State s = WriteStringToFile(env, p + "\n", tmp);
+  State s = WriteStringToFile(env, p + "\n", tmp, true);
   if (s.ok()) {
     s = env->RenameFile(tmp, CurrentFileName(dbname));
   }
