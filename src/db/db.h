@@ -42,7 +42,7 @@ class DBImpl : public DB {
   explicit DBImpl(const Options& opt, const std::string& dbname);
   DBImpl(const DBImpl&) = delete;
   DBImpl& operator=(const DBImpl&) = delete;
-  ~DBImpl() { mutex.unlock(); };
+  ~DBImpl();
   static State Open(const Options& options, std::string name, DB** dbptr);
   State Put(const WriteOptions& options, std::string_view key,
             std::string_view value) override;
@@ -101,6 +101,8 @@ class DBImpl : public DB {
   std::deque<std::shared_ptr<Writer>> writerque;
   std::unique_ptr<WriteBatch> batch;
 
+  std::unique_ptr<TableCache> table_cache;
+
   std::condition_variable background_work_finished_signal;
   std::set<uint64_t> pending_outputs_;
   std::atomic<bool> shutting_down_;
@@ -108,7 +110,7 @@ class DBImpl : public DB {
   std::unique_ptr<const VersionSet> versions_;
   State bg_error;
   State stats_[kNumLevels];
-  std::unique_ptr<PosixEnv> env;
+  std::shared_ptr<PosixEnv> env;
 };
 }  // namespace yubindb
 #endif

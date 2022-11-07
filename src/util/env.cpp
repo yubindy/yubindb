@@ -98,7 +98,7 @@ State WritableFile::SyncDirmainifset() {
   return State::Ok();
 }
 State PosixEnv::NewReadFile(const std::string& filename,
-                            std::unique_ptr<ReadFile> result) {
+                            std::unique_ptr<ReadFile>& result) {
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     result = nullptr;
@@ -123,7 +123,7 @@ State PosixEnv::NewWritableFile(const std::string& filename,
   return State::Ok();
 }
 State PosixEnv::NewAppendableFile(const std::string& filename,
-                                  std::unique_ptr<WritableFile> result) {
+                                  std::unique_ptr<WritableFile>& result) {
   int fd =
       ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
@@ -175,7 +175,7 @@ State PosixEnv::RenameFile(const std::string& from, const std::string& to) {
   return State::Ok();
 }
 State PosixEnv::LockFile(const std::string& filename,
-                         std::unique_ptr<FileLock> lock) {
+                         std::unique_ptr<FileLock>& lock) {
   int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
     spdlog::error("error open : filename: {} err: {}", filename,
@@ -207,7 +207,7 @@ State PosixEnv::LockFile(const std::string& filename,
   lock = std::make_unique<FileLock>(fd, filename);
   return State::Ok();
 }
-State PosixEnv::UnlockFile(std::unique_ptr<FileLock> lock) {
+State PosixEnv::UnlockFile(std::unique_ptr<FileLock>& lock) {
   struct ::flock file_lock_info;
   std::memset(&file_lock_info, 0, sizeof(file_lock_info));
   file_lock_info.l_type = F_WRLCK;
@@ -280,5 +280,14 @@ static State WriteStringToFile(PosixEnv* env, std::string_view data,
     env->DeleteFile(fname);
   }
   return s;
+}
+static std::string Dirname(const std::string& filename) {
+  std::string::size_type separator_pos = filename.rfind('/');
+  if (separator_pos == std::string::npos) {
+    return std::string(".");
+  }
+  assert(filename.find('/', separator_pos + 1) == std::string::npos);
+
+  return filename.substr(0, separator_pos);
 }
 }  // namespace yubindb

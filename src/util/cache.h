@@ -64,7 +64,7 @@ namespace yubindb {
 class Handle;
 class TableCache {
  public:
-  TableCache(const std::string dbname, const Options opt, int erties);
+  TableCache(const std::string dbname, const Options opt);
   ~TableCache();
   State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,
             std::string_view key, void* arg,

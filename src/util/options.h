@@ -1,12 +1,12 @@
 #ifndef YUBINDB_OPTIONS_H_
 #define YUBINDB_OPTIONS_H_
 #include "../db/snapshot.h"
+#include "env.h"
 namespace yubindb {
 const static int kNumLevels = 7;
 struct Options {
   // Create an Options object with default values for all fields.
-  Options();
-
+  Options() = default;
   bool paranoid_checks = false;
 
   int max_open_files = 1000;
@@ -21,6 +21,8 @@ struct Options {
   size_t max_file_size = 2 * 1024 * 1024;
 
   bool reuse_logs = false;
+
+  PosixEnv env;
 };
 
 struct WriteOptions {

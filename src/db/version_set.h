@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "../util/cache.h"
 #include "../util/env.h"
 #include "../util/key.h"
 #include "../util/options.h"
@@ -26,7 +27,8 @@ class Version {
 };
 class VersionSet {
  public:
-  VersionSet() = default;
+  VersionSet(const std::string& dbname_, const Options* options,
+             TableCache* table_cache);
   ~VersionSet() = default;
   State Recover(bool save_manifest);
   State LogAndApply(VersionEdit* edit, std::mutex* mu);

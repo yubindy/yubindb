@@ -83,20 +83,20 @@ class PosixEnv {
     std::abort();
   }
   State NewReadFile(const std::string& filename,
-                    std::unique_ptr<ReadFile> result);
+                    std::unique_ptr<ReadFile>& result);
   // State NewRandomAccessFile(const std::string& filename,
   //                           RandomAccessFile** result);
   State NewWritableFile(const std::string& filename,
                         std::unique_ptr<WritableFile>& result);
   State NewAppendableFile(const std::string& filename,
-                          std::unique_ptr<WritableFile> result);
+                          std::unique_ptr<WritableFile>& result);
   State GetFileSize(const std::string& filename, uint64_t* size);
   State CreateDir(const std::string& dirname);
   State DeleteDir(const std::string& dirname);
   State DeleteFile(const std::string& filename);
   State RenameFile(const std::string& from, const std::string& to);
-  State LockFile(const std::string& filename, std::unique_ptr<FileLock> lock);
-  State UnlockFile(std::unique_ptr<FileLock> lock);
+  State LockFile(const std::string& filename, std::unique_ptr<FileLock>& lock);
+  State UnlockFile(std::unique_ptr<FileLock>& lock);
   void Schedule(void (*background_function)(void* background_arg),
                 void* background_arg);
   void StartThread(void (*thread_main)(void* thread_main_arg),

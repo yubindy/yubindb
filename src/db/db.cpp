@@ -33,17 +33,17 @@ State DBImpl::NewDB() {
   }
   if (s.ok()) {
     // Make "CURRENT" file that points to the new manifest file.
-    s = SetCurrentFile(env, dbname, 1);
+    s = SetCurrentFile(env.get(), dbname, 1);
   } else {
     env->DeleteFile(manifest);
   }
   return s;
 }
-DBImpl::DBImpl(const Options& opt, const std::string dbname)
+DBImpl::DBImpl(const Options& opt, const std::string& dbname)
     : env(new PosixEnv),
       opts(opt),
       dbname(dbname),
-      table_cache(new TableCache(dbname, options)),
+      table_cache(new TableCache(dbname, opt)),
       db_lock(nullptr),
       shutting_down_(false),
       mem_(nullptr),
@@ -51,20 +51,19 @@ DBImpl::DBImpl(const Options& opt, const std::string dbname)
       has_imm_(false),
       logfile(nullptr),
       logfilenum(0),
-      log_(nullptr),
+      logwrite(nullptr),
       batch(new WriteBatch),
-      background_compaction(false),
-      versions_(new VersionSet(dbname_, &options_, table_cache_,
-                               &internal_comparator_)) {}
+      background_compaction_(false),
+      versions_(new VersionSet(dbname, &opt, table_cache)) {}
 DBImpl::~DBImpl() {
   std::unique_lock<std::mutex> lk(mutex);
-  shutting_down_.store(true, std::std::memory_order_release);
+  shutting_down_.store(true, std::memory_order_release);
   while (background_compaction_) {
-    background_work_cond.wait(&lk);
+    background_work_finished_signal.wait(lk);
   }
   lk.unlock();
   if (db_lock != nullptr) {
-    env->UnlockFile(db_lock);
+    env->UnlockFile(db_lock.get());
   }
 }
 //该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
