@@ -147,30 +147,22 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
   result = std::make_unique<WritableFile>(filename, fd);
   return State::Ok();
 }
-// State PosixEnv::NewLogger(const std::string& filename,
-//                           std::unique_ptr<Logger> result) {
-//   int fd =
-//       ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC,
-//       0644);
-//   if (fd < 0) {
-//     result = nullptr;
-//     spdlog::error("error newlogger: filename: {} err: {}", filename,
-//                   strerror(errno));
-//     return State::IoError(filename.c_str());
-//   }
-
-//   std::FILE* fp = ::fdopen(fd, "w");
-//   if (fp == nullptr) {
-//     ::close(fd);
-//     result = nullptr;
-//     spdlog::error("error newlogger: filename: {} err: {}", filename,
-//                   strerror(errno));
-//     return State::IoError(filename.c_str());
-//   } else {
-//     result = std::make_unique<Logger>(fp);
-//     return State::Ok();
-//   }
-// }
+State PosixEnv::CreateDir(const std::string& dirname) {
+  if (::mkdir(dirname.c_str(), 0755) != 0) {
+    spdlog::error("error createdir: dirname: {} err: {}", dirname,
+                  strerror(errno));
+    return State::IoError(dirname.c_str());
+  }
+  return State::Ok();
+}
+State PosixEnv::DeleteDir(const std::string& dirname) {
+  if (::rmdir(dirname.c_str()) != 0) {
+    spdlog::error("error delterdir: dirname: {} err: {}", dirname,
+                  strerror(errno));
+    return State::IoError(dirname.c_str());
+  }
+  return State::Ok();
+}
 State PosixEnv::DeleteFile(const std::string& filename) {
   if (::unlink(filename.c_str()) != 0) {
     spdlog::error("error unlink: filename: {} err: {}", filename,
@@ -254,7 +246,8 @@ void PosixEnv::Schedule(backwork work) {
   background_work_queue.emplace(work);
   background_work_mutex.unlock();
 }
-void PosixEnv::StartThread(void (*thread_main)(void* thread_main_arg), void* thread_main_arg) {
+void PosixEnv::StartThread(void (*thread_main)(void* thread_main_arg),
+                           void* thread_main_arg) {
   std::thread threads(thread_main, thread_main_arg);
   threads.detach();
 }
@@ -281,5 +274,22 @@ static std::string Dirname(const std::string& filename) {
   assert(filename.find('/', separator_pos + 1) == std::string::npos);
 
   return filename.substr(0, separator_pos);
+}
+static State WriteStringToFile(PosixEnv* env, std::string_view data,
+                               const std::string& fname, bool sync) {
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = file->Append(data);
+  if (s.ok() && sync) {
+    s = file->Sync();
+  }
+  file.reset();
+  if (!s.ok()) {
+    env->DeleteFile(fname);
+  }
+  return s;
 }
 }  // namespace yubindb

@@ -1,31 +1,16 @@
-#include <deque>
-#include <memory.h>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory_resource>
 #include <stdio.h>
+#include <string>
 #include <string_view>
-#include <thread>
-#include <unistd.h>
-class P {
- public:
-  P() {
-    int b = 17;
-    a = &b;
-  }
-  ~P() = default;
-  void fun() {
-    int s = *(int*)a;
-    while (1) {
-      printf("s");
-    }
-  }
+using namespace std::literals;
 
- private:
-  void* a;
-};
 int main() {
-  int s = 14;
-  P ap;
-  std::thread p(&P::fun, &ap);
-  p.detach();
-  ::sleep(10);
+  std::pair<int, int> p(6, 7);
+  printf("%d %d", p.first, p.second);
+  p = std::make_pair<int, int>(1, 23);
+  printf("%d %d", p.first, p.second);
   return 0;
 }

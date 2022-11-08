@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "../util/arena.h"
+#include "../util/cache.h"
 #include "../util/key.h"
 #include "../util/skiplistpg.h"
 namespace yubindb {
@@ -24,6 +25,7 @@ class Memtable {
 
  private:
   std::unique_ptr<Skiplist> table;
+  // std::unique_ptr<LruCache> cache;
   std::unique_ptr<Arena> arena;
   std::string tmp;
 };

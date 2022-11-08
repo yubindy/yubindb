@@ -74,7 +74,7 @@ class ReadFile {
   std::string str;
   int fd;
 };
-class PosixEnv {
+class PosixEnv {  //TODO static
  public:
   typedef std::function<void()> backwork;
   PosixEnv() = default;
@@ -87,7 +87,7 @@ class PosixEnv {
                     std::unique_ptr<ReadFile>& result);
   // State NewRandomAccessFile(const std::string& filename,
   //                           RandomAccessFile** result);
-  State NewWritableFile(const std::string& filename,
+  State NewWritableFile(const std::string& filename, 
                         std::shared_ptr<WritableFile>& result);
   State NewWritableFile(const std::string& filename,
                         std::unique_ptr<WritableFile>& result);
@@ -121,23 +121,8 @@ class PosixEnv {
   std::set<std::string> filelock;
   std::mutex filemutex;  // lock filelock
 };
-
+static std::string Dirname(const std::string& filename);
 static State WriteStringToFile(PosixEnv* env, std::string_view data,
-                               const std::string& fname, bool sync) {
-  std::unique_ptr<WritableFile> file;
-  State s = env->NewWritableFile(fname, file);
-  if (!s.ok()) {
-    return s;
-  }
-  s = file->Append(data);
-  if (s.ok() && sync) {
-    s = file->Sync();
-  }
-  file.reset();
-  if (!s.ok()) {
-    env->DeleteFile(fname);
-  }
-  return s;
-}
+                               const std::string& fname, bool sync);
 }  // namespace yubindb
 #endif
