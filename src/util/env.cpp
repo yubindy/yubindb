@@ -9,7 +9,6 @@
 
 #include "filename.h"
 #include "spdlog/spdlog.h"
-
 namespace yubindb {
 void Logv(const char* format, va_list ap) {}
 State WritableFile::Append(std::string_view ptr) {
@@ -107,6 +106,19 @@ State PosixEnv::NewReadFile(const std::string& filename,
     return State::IoError(filename.c_str());
   }
   result = std::make_unique<ReadFile>(filename, fd);
+  return State::Ok();
+}
+State PosixEnv::NewWritableFile(const std::string& filename,
+                                std::shared_ptr<WritableFile>& result) {
+  int fd =
+      ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+  if (fd < 0) {
+    result = nullptr;
+    spdlog::error("error open: filename: {} err: {}", filename,
+                  strerror(errno));
+    return State::IoError(filename.c_str());
+  }
+  result = std::make_shared<WritableFile>(filename, fd);
   return State::Ok();
 }
 State PosixEnv::NewWritableFile(const std::string& filename,
@@ -227,28 +239,25 @@ State PosixEnv::UnlockFile(std::unique_ptr<FileLock>& lock) {
   lock.reset();
   return State::Ok();
 }
-void PosixEnv::Schedule(void (*background_function)(void* background_arg),
-                        void* background_arg) {
+void PosixEnv::Schedule(backwork work) {
   background_work_mutex.lock();
 
   if (!started_background_thread) {
     started_background_thread = true;
-    std::thread background_thread(PosixEnv::BackgroundThread, this);
+    std::thread background_thread(&PosixEnv::BackgroundThreadMain, this);
     background_thread.detach();
   }
 
   if (background_work_queue.empty()) {
     background_work_cond.notify_one();
   }
-  background_work_queue.emplace(background_function, background_arg);
+  background_work_queue.emplace(work);
   background_work_mutex.unlock();
 }
-void PosixEnv::StartThread(void (*thread_main)(void* thread_main_arg),
-                           void* thread_main_arg) {
+void PosixEnv::StartThread(void (*thread_main)(void* thread_main_arg), void* thread_main_arg) {
   std::thread threads(thread_main, thread_main_arg);
   threads.detach();
 }
-
 void PosixEnv::BackgroundThreadMain() {
   std::unique_lock<std::mutex> backwork(background_work_mutex);
   while (true) {
@@ -256,12 +265,12 @@ void PosixEnv::BackgroundThreadMain() {
     while (background_work_queue.empty()) {
       background_work_cond.wait(backwork);
     }
-    auto background_work_function = background_work_queue.front().function;
-    void* background_work_arg = background_work_queue.front().arg;
+    std::function<void()> background_work_function =
+        background_work_queue.front();
     background_work_queue.pop();
 
     backwork.unlock();
-    background_work_function(background_work_arg);
+    background_work_function();
   }
 }
 static std::string Dirname(const std::string& filename) {

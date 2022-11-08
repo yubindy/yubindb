@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <fcntl.h>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <set>
@@ -12,25 +13,10 @@
 
 #include "common.h"
 
-constexpr const size_t kWritableFileBufferSize = 64 * 1024;
 namespace yubindb {
-static State WriteStringToFile(PosixEnv* env, std::string_view data,
-                               const std::string& fname, bool sync) {
-  std::unique_ptr<WritableFile> file;
-  State s = env->NewWritableFile(fname, file);
-  if (!s.ok()) {
-    return s;
-  }
-  s = file->Append(data);
-  if (s.ok() && sync) {
-    s = file->Sync();
-  }
-  file.reset();
-  if (!s.ok()) {
-    env->DeleteFile(fname);
-  }
-  return s;
-}
+constexpr const size_t kWritableFileBufferSize = 64 * 1024;
+static std::string Dirname(const std::string& filename);
+class DBImpl;
 class FileLock {
  public:
   FileLock(int fd, std::string filename)
@@ -51,7 +37,7 @@ class WritableFile {
         filestr(std::move(str_)),
         dirstr(Dirname(filestr)),
         ismainifset(Ismainset(filestr)) {}
-  ~WritableFile();
+  ~WritableFile() = default;
   WritableFile(const WritableFile&) = delete;
   WritableFile& operator=(const WritableFile&) = delete;
 
@@ -79,7 +65,7 @@ class ReadFile {
   explicit ReadFile(std::string str_, int fd_) : str(str_), fd(fd_) {}
   ReadFile(const ReadFile&) = delete;
   ReadFile& operator=(const ReadFile&) = delete;
-  ~ReadFile();
+  ~ReadFile() = default;
   std::string_view Name() { return std::string_view(str); }
   State Read(size_t n, std::string_view result, char* scratch);
   State Skip(uint64_t n);
@@ -90,6 +76,7 @@ class ReadFile {
 };
 class PosixEnv {
  public:
+  typedef std::function<void()> backwork;
   PosixEnv() = default;
   ~PosixEnv() {
     static char msg[] = "PosixEnv destroyed!\n";
@@ -101,6 +88,8 @@ class PosixEnv {
   // State NewRandomAccessFile(const std::string& filename,
   //                           RandomAccessFile** result);
   State NewWritableFile(const std::string& filename,
+                        std::shared_ptr<WritableFile>& result);
+  State NewWritableFile(const std::string& filename,
                         std::unique_ptr<WritableFile>& result);
   State NewAppendableFile(const std::string& filename,
                           std::unique_ptr<WritableFile>& result);
@@ -111,8 +100,7 @@ class PosixEnv {
   State RenameFile(const std::string& from, const std::string& to);
   State LockFile(const std::string& filename, std::unique_ptr<FileLock>& lock);
   State UnlockFile(std::unique_ptr<FileLock>& lock);
-  void Schedule(void (*background_function)(void* background_arg),
-                void* background_arg);
+  void Schedule(backwork work);
   void StartThread(void (*thread_main)(void* thread_main_arg),
                    void* thread_main_arg);
   // State NewLogger(const std::string& filename, std::unique_ptr<Logger>
@@ -122,24 +110,34 @@ class PosixEnv {
   }
 
  private:
-  struct BackgroundWorkItem {
-    explicit BackgroundWorkItem(void (*function)(void* arg), void* arg)
-        : function(function), arg(arg) {}
-
-    void (*const function)(void*);
-    void* const arg;
-  };
   // background
   void BackgroundThreadMain();
-  static void BackgroundThread(PosixEnv* env) { env->BackgroundThreadMain(); }
   std::mutex background_work_mutex;
   std::condition_variable background_work_cond;
-  std::queue<BackgroundWorkItem> background_work_queue;
+  std::queue<backwork> background_work_queue;
   bool started_background_thread;
 
   // filemutex
   std::set<std::string> filelock;
   std::mutex filemutex;  // lock filelock
 };
+
+static State WriteStringToFile(PosixEnv* env, std::string_view data,
+                               const std::string& fname, bool sync) {
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = file->Append(data);
+  if (s.ok() && sync) {
+    s = file->Sync();
+  }
+  file.reset();
+  if (!s.ok()) {
+    env->DeleteFile(fname);
+  }
+  return s;
+}
 }  // namespace yubindb
 #endif

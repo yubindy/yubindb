@@ -112,7 +112,8 @@
     "strstream": "cpp",
     "hash_map": "cpp",
     "hash_set": "cpp",
-    "slist": "cpp"
+    "slist": "cpp",
+    "cerrno": "cpp"
   },
   "clang.cxxflags": [ // 控制c++静态检测时的参数
     "-I",

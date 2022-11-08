@@ -85,7 +85,7 @@ bool GetLengthPrefixedview(std::string_view* input, std::string_view* result);
 class State {
  public:
   State() : state_(nullptr) {}
-  ~State();
+  ~State() = default;
 
   State(const State& rhs);
   State& operator=(const State& rhs) {

@@ -25,35 +25,44 @@ static const int kHeaderSize = 7;
 // checksum (4 bytes), length (2 bytes), type (1 byte).
 class Record {
  public:
-  Record();
-  ~Record();
+  Record() = default;
+  ~Record() = default;
 
  private:
 };
 class walWriter {
  public:
-  explicit walWriter(WritableFile* file_) : block_offset(0) {
-    file.reset(file_);
+  explicit walWriter(std::shared_ptr<WritableFile> file_) : block_offset(0) {
+    file = file_;
     for (int i = 0; i <= kLastType; i++) {
       char t = static_cast<char>(i);
       type_crc[i] = crc32c::Crc32c(&t, 1);
     }
   }
-  ~walWriter();
+  ~walWriter() = default;
   State Appendrecord(std::string_view str);
 
  private:
   State Flushphyrecord(RecordType type, const char* buf_, size_t size);
-  std::unique_ptr<WritableFile> file;
+  std::shared_ptr<WritableFile> file;
   int block_offset;
   uint32_t type_crc[kLastType + 1];
 };
 class walReader {
  public:
   explicit walReader();
-  ~walReader();
+  ~walReader() = default;
 
  private:
+  std::unique_ptr<ReadFile> file;
+  bool const checksum;
+  char* const readbuf;
+  std::string_view readbuf_;
+  bool error;
+
+  uint64_t lastrecord_offset;
+  uint64_t nowoffset;
+  uint64_t init_offset;
 };
 }  // namespace yubindb
 #endif

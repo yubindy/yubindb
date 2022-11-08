@@ -10,3 +10,13 @@ cc_library(
          "//src/util:util",
     ],
 )
+
+
+cc_binary(
+    name = "comtest",
+    srcs = ["main.cpp"],
+    deps = [
+        ":db",
+        "//src/util:util",
+    ],
+)

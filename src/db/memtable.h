@@ -10,7 +10,7 @@ namespace yubindb {
 class Memtable {
  public:
   explicit Memtable();
-  ~Memtable();
+  ~Memtable() = default;
 
   Memtable(const Memtable&) = delete;
   Memtable& operator=(const Memtable&) = delete;

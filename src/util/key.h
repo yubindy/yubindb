@@ -45,7 +45,7 @@ class InternalKey {
     PutFixed64(&Key, parser(num, type));
   }
   InternalKey() {}
-  ~InternalKey();
+  ~InternalKey() = default;
   const std::string_view getview() const { return std::string_view(Key); }
   uint64_t parser(SequenceNum num, Valuetype type);
 
@@ -63,7 +63,7 @@ class Lookey {
   Lookey(std::string_view key_, SequenceNum seq_);
   std::string_view usrkey();
 
-  ~Lookey();
+  ~Lookey() = default;
   std::string_view skiplist_key() const {
     return std::string_view(start, end - start);
   }

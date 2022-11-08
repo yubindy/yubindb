@@ -4,17 +4,28 @@
 #include <string_view>
 #include <thread>
 #include <unistd.h>
+class P {
+ public:
+  P() {
+    int b = 17;
+    a = &b;
+  }
+  ~P() = default;
+  void fun() {
+    int s = *(int*)a;
+    while (1) {
+      printf("s");
+    }
+  }
 
-// void fun(void* p) {
-//   int s = *(int*)p;
-//   while (1) {
-//     printf("p");
-//   }
-// }
-// int main() {
-//   int s = 14;
-//   std::thread p(fun, &s);
-//   p.detach();
-//   ::sleep(10);
-//   return 0;
-// }
+ private:
+  void* a;
+};
+int main() {
+  int s = 14;
+  P ap;
+  std::thread p(&P::fun, &ap);
+  p.detach();
+  ::sleep(10);
+  return 0;
+}
