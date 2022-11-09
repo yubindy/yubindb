@@ -25,13 +25,12 @@ struct ReadOptions;
 struct WriteOptions;
 struct Writer;
 class VersionSet;
-class SnapshotList;
 
 const static size_t MaxBatchSize = 1024;
 class DB {
  public:
   explicit DB() {}
-  virtual ~DB() = 0;
+  virtual ~DB(){};
   virtual State Put(const WriteOptions& options, std::string_view key,
                     std::string_view value) = 0;
   virtual State Delete(const WriteOptions& options, std::string_view key) = 0;
@@ -51,7 +50,6 @@ class DBImpl : public DB {
   State Get(const ReadOptions& options, std::string_view key,
             std::string_view* value);
   State InsertInto(WriteBatch* batch, Memtable* mem);
-  const Snapshot* GetSnapshot();
 
  private:
   struct Writer {
@@ -78,11 +76,12 @@ class DBImpl : public DB {
   State NewDB();
   WriteBatch* BuildBatch(Writer** rul);
   WriteBatch* BuildBatchGroup(std::shared_ptr<DBImpl::Writer>* last_writer);
-  State MakeRoomForwrite(bool force);
-  void ReleaseSnapshot(const Snapshot* snapshot);
   State Recover(VersionEdit* edit, bool* save_manifest);
+  State MakeRoomForwrite(bool force);
   void DeleteObsoleteFiles();
   void MaybeCompaction();
+  std::shared_ptr<const Snapshot> GetSnapshot();
+  void ReleaseSnapshot(std::shared_ptr<const Snapshot>& snapshot);
   void BackgroundCall();
   void BackgroundCompaction();
 
@@ -101,7 +100,9 @@ class DBImpl : public DB {
   std::deque<std::shared_ptr<Writer>> writerque;
   std::unique_ptr<WriteBatch> batch;
 
+  std::list<std::shared_ptr<const Snapshot>> snapshots;
   std::shared_ptr<TableCache> table_cache;
+  std::set<uint64_t> pending_file;
 
   std::condition_variable background_work_finished_signal;
   std::set<uint64_t> pending_outputs_;

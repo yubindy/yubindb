@@ -1,8 +1,8 @@
 #ifndef YUBINDB_OPTIONS_H_
 #define YUBINDB_OPTIONS_H_
-#include "../db/snapshot.h"
 #include "env.h"
 namespace yubindb {
+class Snapshot;
 const static int kNumLevels = 7;
 struct Options {
   // Create an Options object with default values for all fields.

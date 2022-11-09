@@ -38,10 +38,12 @@ class VersionSet {
   uint64_t MainifsetFileNum() { return manifest_file_number; }
   SequenceNum LastSequence() const { return last_sequence; }
   void SetLastSequence(SequenceNum seq) { last_sequence = seq; }
-
-  uint64_t NewFileNumber();
-  int NumLevelFiles(int level) const;
+  uint64_t NewFileNumber() {
+    { return next_file_number++; }
+  }
+  int NumLevelFiles(int level) const { return nowversion->files[level].size(); }
   int64_t NumLevelBytes(int level) const;
+  void AddLiveFiles(std::set<uint64_t>* live);
 
  private:
   const PosixEnv* env_;

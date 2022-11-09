@@ -155,13 +155,6 @@ bool GetLengthPrefixedview(std::string_view* input, std::string_view* result) {
     return false;
   }
 }
-const char* State::CopyState(const char* state) {
-  uint32_t size;
-  memcpy(&size, state, sizeof(size));
-  char* result = new char[size + 5];
-  memcpy(result, state, size + 5);
-  return result;
-}
 State::State(Code code, const std::string& msg) {
   assert(code != kok);
   const uint32_t size = static_cast<uint32_t>(msg.size());
@@ -208,5 +201,12 @@ std::string State::ToString() const {
     result.append(state_ + 5, length);
     return result;
   }
+}
+const char* State::CopyState(const char* state) {
+  uint32_t size;
+  memcpy(&size, state, sizeof(size));
+  char* result = new char[size + 5];
+  memcpy(result, state, size + 5);
+  return result;
 }
 }  // namespace yubindb

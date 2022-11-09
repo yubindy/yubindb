@@ -1,5 +1,6 @@
 #include "env.h"
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <memory.h>
 #include <sys/stat.h>
@@ -13,6 +14,46 @@ namespace yubindb {
 void Logv(const char* format, va_list ap) {}
 State WritableFile::Append(std::string_view ptr) {
   return Append(ptr.data(), ptr.size());
+}
+static std::string_view Basename(const std::string& filename) {
+  auto rul = filename.rfind('/');
+  if (rul == std::string::npos) {
+    return std::string_view(filename);
+  }
+  assert(filename.find('/', rul + 1) == std::string::npos);
+
+  return std::string_view(filename.data() + rul + 1,
+                          filename.length() - rul - 1);
+}
+static bool Ismanifest(const std::string& filename) {
+  std::string_view p(Basename(filename).substr(0, 8));
+  return p.compare("MANIFEST");
+}
+static std::string Dirname(const std::string& filename) {
+  std::string::size_type separator_pos = filename.rfind('/');
+  if (separator_pos == std::string::npos) {
+    return std::string(".");
+  }
+  assert(filename.find('/', separator_pos + 1) == std::string::npos);
+
+  return filename.substr(0, separator_pos);
+}
+State WriteStringToFile(PosixEnv* env, std::string_view data,
+                               const std::string& fname, bool sync) {
+  std::unique_ptr<WritableFile> file;
+  State s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = file->Append(data);
+  if (s.ok() && sync) {
+    s = file->Sync();
+  }
+  file.reset();
+  if (!s.ok()) {
+    env->DeleteFile(fname);
+  }
+  return s;
 }
 State WritableFile::Append(const char* ptr, size_t size) {
   size_t wrsize = std::min(size, kWritableFileBufferSize - offset);
@@ -155,6 +196,22 @@ State PosixEnv::CreateDir(const std::string& dirname) {
   }
   return State::Ok();
 }
+State PosixEnv::GetChildren(const std::string& directory_path,
+                            std::vector<std::string>* result) {
+  result->clear();
+  ::DIR* dir = ::opendir(directory_path.c_str());
+  if (dir == nullptr) {
+    spdlog::error("error delterdir: dirname: {} err: {}", directory_path,
+                  strerror(errno));
+    return State::IoError(directory_path.c_str());
+  }
+  struct ::dirent* entry;
+  while ((entry = ::readdir(dir)) != nullptr) {
+    result->emplace_back(entry->d_name);
+  }
+  ::closedir(dir);
+  return State::Ok();
+}
 State PosixEnv::DeleteDir(const std::string& dirname) {
   if (::rmdir(dirname.c_str()) != 0) {
     spdlog::error("error delterdir: dirname: {} err: {}", dirname,
@@ -265,31 +322,5 @@ void PosixEnv::BackgroundThreadMain() {
     backwork.unlock();
     background_work_function();
   }
-}
-static std::string Dirname(const std::string& filename) {
-  std::string::size_type separator_pos = filename.rfind('/');
-  if (separator_pos == std::string::npos) {
-    return std::string(".");
-  }
-  assert(filename.find('/', separator_pos + 1) == std::string::npos);
-
-  return filename.substr(0, separator_pos);
-}
-static State WriteStringToFile(PosixEnv* env, std::string_view data,
-                               const std::string& fname, bool sync) {
-  std::unique_ptr<WritableFile> file;
-  State s = env->NewWritableFile(fname, file);
-  if (!s.ok()) {
-    return s;
-  }
-  s = file->Append(data);
-  if (s.ok() && sync) {
-    s = file->Sync();
-  }
-  file.reset();
-  if (!s.ok()) {
-    env->DeleteFile(fname);
-  }
-  return s;
 }
 }  // namespace yubindb

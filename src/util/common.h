@@ -87,7 +87,9 @@ class State {
   State() : state_(nullptr) {}
   ~State() = default;
 
-  State(const State& rhs);
+  State(const State& rhs) {
+    state_ = (rhs.state_ == nullptr) ? nullptr : CopyState(rhs.state_);
+  }
   State& operator=(const State& rhs) {
     if (state_ != nullptr) {
       delete[] state_;
@@ -122,7 +124,6 @@ class State {
   bool IsNotSupportedError() const { return code() == knotsupported; }
 
   bool IsInvalidArgument() const { return code() == kinvalidargument; }
-
   std::string ToString() const;
 
  private:
@@ -139,7 +140,7 @@ class State {
   }
 
   State(Code code, const std::string& msg);
-  static const char* CopyState(const char* s);
+  const char* CopyState(const char* s);
   const char* state_;
 };
 }  // namespace yubindb

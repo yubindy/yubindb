@@ -6,6 +6,16 @@
 #include "common.h"
 #include "env.h"
 namespace yubindb {
+class PosixEnv;
+enum FileType {
+  kLogFile,
+  kDBLockFile,
+  kTableFile,
+  kDescriptorFile,
+  kCurrentFile,
+  kTempFile,
+  kInfoLogFile  // Either the current one, or an old one
+};
 static std::string MakeFileName(const std::string& dbname, uint64_t number,
                                 const char* suffix);
 

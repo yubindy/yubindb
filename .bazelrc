@@ -1,4 +1,4 @@
-build:debug -c opt --copt -g  --cxxopt=-O0 --jobs=15 -std=c++17
+build:debug -c opt --copt -g --cxxopt=-O0 --jobs=15 --cxxopt="-std=c++17"
 build:asan --strip=never
 build:asan --copt -fsanitize=address
 build:asan --copt -DADDRESS_SANITIZER
@@ -10,5 +10,6 @@ build:asan --linkopt -fsanitize=address
 # --cxxopt=-O3 --jobs=15 -std=c++17
 build --strip=never
 #build --repo_env=CC=clang++ if use clang++ skiplist lib has error
-build --cxxopt=-O3
+build --cxxopt=-O0
+build -c opt --copt -g
 build --cxxopt="-std=c++17"

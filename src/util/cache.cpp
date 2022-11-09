@@ -50,8 +50,11 @@ size_t ShareCache::Getsize() {
   }
   return all;
 }
-TableCache::TableCache(std::string_view dbname, Options* opt, int size)
-    : env(&opt->env), dbname(dbname), opt(opt), cache(new ShareCache(size)) {}
+TableCache::TableCache(std::string_view dbname, const Options* opt)
+    : env(&opt->env),
+      dbname(dbname),
+      opt(opt),
+      cache(new ShareCache(opt->max_open_files - kNumNonTableCacheFiles)) {}
 State TableCache::Get(const ReadOptions& readopt, uint64_t file_num,
                       uint64_t file_size, std::string_view key, void* arg,
                       void (*handle_rul)(void*, std::string_view a,

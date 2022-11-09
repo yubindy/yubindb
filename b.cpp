@@ -1,16 +1,16 @@
 #include <functional>
 #include <iostream>
 #include <map>
-#include <memory_resource>
+#include <memory>
 #include <stdio.h>
 #include <string>
 #include <string_view>
-using namespace std::literals;
 
 int main() {
-  std::pair<int, int> p(6, 7);
-  printf("%d %d", p.first, p.second);
-  p = std::make_pair<int, int>(1, 23);
-  printf("%d %d", p.first, p.second);
+  std::string_view p("123456");
+  std::string_view pp(p.substr(0, 4));
+  std::string_view sp("123");
+  std::cout << p << std::endl;
+  std::cout << pp.compare(sp) << std::endl;
   return 0;
 }

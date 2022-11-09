@@ -3,9 +3,9 @@
 #include <memory.h>
 
 #include "../util/filename.h"
+#include "snapshot.h"
 #include "spdlog/spdlog.h"
 #include "version_edit.h"
-class SnapshotImpl;
 class Version;
 class VersionSet;
 
@@ -198,7 +198,7 @@ State DBImpl::Get(const ReadOptions& options, std::string_view key,
   std::unique_lock<std::mutex> rlock(mutex);
   SequenceNum snapshot;
   if (options.snapshot != nullptr) {
-    snapshot = static_cast<const SnapshotImpl*>(options.snapshot)->sequence();
+    snapshot = options.snapshot->sequence();
   } else {
     snapshot = versions_->LastSequence();
   }
@@ -225,6 +225,9 @@ State DBImpl::Get(const ReadOptions& options, std::string_view key,
     MaybeCompaction();     // TODO doing compaction ?
   }
   return s;
+}
+State DBImpl::InsertInto(WriteBatch* batch, Memtable* mem) {
+  // TODO
 }
 WriteBatch* DBImpl::BuildBatchGroup(
     std::shared_ptr<DBImpl::Writer>* last_writer) {
@@ -256,6 +259,7 @@ State DBImpl::MakeRoomForwrite(bool force) {
                versions_->NumLevelFiles(0) >= config::kL0_SlowdownWrites) {
     }
   }
+  return State::Ok();
 }
 void DBImpl::MaybeCompaction() {
   if (background_compaction_) {
@@ -266,6 +270,31 @@ void DBImpl::MaybeCompaction() {
     background_compaction_ = true;
     env->Schedule(std::bind(&DBImpl::BackgroundCall, this));
   }
+}
+void DBImpl::DeleteObsoleteFiles() {  // delete outtime file
+  if (!bg_error.ok()) {
+    return;
+  }
+  std::set<uint64_t> live = pending_file;
+  versions_->AddLiveFiles(&live);
+  std::vector<std::string> filenames;
+  env->GetChildren(dbname, &filenames);
+
+  mutex.unlock();
+  for (size_t i = 0; i < filenames.size(); i++) {
+    // TODO 删除过时的文件，思考添加kv分离的gc
+  }
+}
+std::shared_ptr<const Snapshot> DBImpl::GetSnapshot() {
+  std::lock_guard<std::mutex> lk(mutex);
+  std::shared_ptr<const Snapshot> snapshot_ =
+      std::make_shared<const Snapshot>(versions_->LastSequence());
+  snapshots.emplace_back(snapshot_);
+  return snapshot_;
+}
+void DBImpl::ReleaseSnapshot(std::shared_ptr<const Snapshot>& snapshot) {
+  std::lock_guard<std::mutex> lk(mutex);
+  snapshots.remove(snapshot);
 }
 void DBImpl::BackgroundCall() {
   std::unique_lock<std::mutex> lk(mutex);

@@ -3,6 +3,8 @@ cc_library(
     srcs = glob([
         "*.cpp",
         "*.h",
+        "src/db/snapshot.h",
+        "src/db/snapshot.cpp",
     ]),
     visibility = ["//visibility:public"],
     deps = [

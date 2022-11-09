@@ -51,7 +51,7 @@ class ShareCache {
 };
 class TableCache {
  public:
-  explicit TableCache(std::string_view dbname, Options* opt, int size);
+  explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
   State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,
             std::string_view key, void* arg,
@@ -61,9 +61,9 @@ class TableCache {
  private:
   State FindTable(uint64_t file_num, uint64_t file_size, void**);
 
-  PosixEnv* env;
+  const PosixEnv* env;
   std::string_view dbname;
-  Options* const opt;
+  const Options* const opt;
   std::unique_ptr<ShareCache> cache;
 };
 }  // namespace yubindb
