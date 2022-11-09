@@ -35,6 +35,7 @@ class ShareCache {
  public:
   explicit ShareCache(uint64_t size) : last_id(0) {
     for (int s = 0; s < 16; s++) {
+      sharecache[s] = std::make_unique<LruCache>();
       sharecache[s]->SetCapacity(size / 16);
     }
   }

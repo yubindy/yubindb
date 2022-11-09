@@ -39,7 +39,7 @@ static std::string Dirname(const std::string& filename) {
   return filename.substr(0, separator_pos);
 }
 State WriteStringToFile(PosixEnv* env, std::string_view data,
-                               const std::string& fname, bool sync) {
+                        const std::string& fname, bool sync) {
   std::unique_ptr<WritableFile> file;
   State s = env->NewWritableFile(fname, file);
   if (!s.ok()) {
@@ -190,8 +190,8 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
 }
 State PosixEnv::CreateDir(const std::string& dirname) {
   if (::mkdir(dirname.c_str(), 0755) != 0) {
-    spdlog::error("error createdir: dirname: {} err: {}", dirname,
-                  strerror(errno));
+    spdlog::warn("warn createdir: dirname: {} err: {}", dirname,
+                 strerror(errno));
     return State::IoError(dirname.c_str());
   }
   return State::Ok();

@@ -42,7 +42,7 @@ State walWriter::Flushphyrecord(RecordType type, const char* buf_,
   buf[0] = (size & 0xff);
   buf[1] = (size >> 8);
   buf[2] = type;
-  uint32_t check_sum = crc32c::Crc32c(buf_, size);
+  uint32_t check_sum = crc32c::Crc32c(buf_, size); //SEGMENTATION FAULT use error
   State s;
   s = file->Append((char*)&check_sum, sizeof(check_sum));  // crc
   if (!s.ok()) {
