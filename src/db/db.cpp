@@ -26,6 +26,7 @@ State DBImpl::NewDB() {
     walWriter loger(file);
     std::string record;
     new_db.EncodeTo(&record);
+    spdlog::info("wal write record {}", record);
     s = loger.Appendrecord(record);
     if (s.ok()) {
       s = file->Close();
@@ -264,11 +265,13 @@ State DBImpl::MakeRoomForwrite(bool force) {
 void DBImpl::MaybeCompaction() {
   if (background_compaction_) {
     // Already scheduled
+    spdlog::debug("background is work");
   } else if (shutting_down_.load(std::memory_order_acquire)) {
   } else if (!bg_error.ok()) {
   } else {
     background_compaction_ = true;
     env->Schedule(std::bind(&DBImpl::BackgroundCall, this));
+    spdlog::info("dbimpl start schedule backgroundCall");
   }
 }
 void DBImpl::DeleteObsoleteFiles() {  // delete outtime file

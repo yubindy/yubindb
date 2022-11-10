@@ -19,7 +19,7 @@ State walWriter::Appendrecord(std::string_view str) {
       block_offset = 0;
     }
     const size_t avail = kBlockSize - block_offset - kHeaderSize;
-    bool end = avail > blockleft ? blockleft : avail;
+    bool end = avail > size ? size : avail;
     if (begin && end) {
       type = kFullType;
     } else if (begin) {
@@ -29,26 +29,25 @@ State walWriter::Appendrecord(std::string_view str) {
     } else {
       type = kMiddleType;
     }
-    s = Flushphyrecord(type, ptr, std::min(blockleft, avail));
-    ptr += std::min(blockleft, avail);
-    size -= std::min(blockleft, avail);
+    s = Flushphyrecord(type, ptr, std::min(size, avail));
+    ptr += std::min(size, avail);
+    size -= std::min(size, avail);
   }
   return s;
 }
 State walWriter::Flushphyrecord(RecordType type, const char* buf_,
                                 size_t size) {
   assert(block_offset + kHeaderSize + size <= kBlockSize);
-  char buf[3];
-  buf[0] = (size & 0xff);
-  buf[1] = (size >> 8);
-  buf[2] = type;
-  uint32_t check_sum = crc32c::Crc32c(buf_, size); //SEGMENTATION FAULT use error
+  spdlog::info("wal write flushrecord type: {} msg: {} size: {}", type, buf_,
+               size);
+  char buf[kHeaderSize];
+  buf[4] = (size & 0xff);
+  buf[5] = (size >> 8);
+  buf[6] = type;
+  uint32_t check_sum = crc32c::Extend(type_crc[type], (uint8_t*)(buf_), size);
+  EncodeFixed32(buf, check_sum);
   State s;
-  s = file->Append((char*)&check_sum, sizeof(check_sum));  // crc
-  if (!s.ok()) {
-    return s;
-  }
-  s = file->Append(buf, sizeof(buf));  // size + type
+  s = file->Append(buf, kHeaderSize);  // crc+size + type
   if (!s.ok()) {
     return s;
   }

@@ -8,8 +8,8 @@
 namespace yubindb {
 struct FileMate {  // file mate
   FileMate() = default;
-  ~FileMate()=default;
-  int re;
+  ~FileMate() = default;
+  int allowed_seeks;
   bool seek;  // if compaction is not
   uint64_t num;
   uint64_t file_size;

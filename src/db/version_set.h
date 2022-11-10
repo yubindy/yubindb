@@ -19,13 +19,25 @@ class Version {
     std::unique_ptr<FileMate> seek_file;
     int seek_file_level;
   };
-  Version() = default;
+  explicit Version(VersionSet* vset)
+      : vset(vset),
+        filecompact(nullptr),
+        filecompact_level(-1),
+        compaction_score(-1),
+        compaction_level(-1) {}
   ~Version() = default;
 
  private:
   friend VersionSet;
+  VersionSet* vset;
   std::vector<std::unique_ptr<FileMate>>
       files[kNumLevels];  // 每个级别的文件列表
+  FileMate* filecompact;
+  int filecompact_level;
+
+  // 用于size_compation
+  double compaction_score;
+  int compaction_level;
 };
 class VersionSet {
  public:
@@ -46,6 +58,7 @@ class VersionSet {
   void AddLiveFiles(std::set<uint64_t>* live);
 
  private:
+  class Builder;
   const PosixEnv* env_;
   const std::string dbname;
   const Options* ops;
@@ -61,7 +74,8 @@ class VersionSet {
   std::unique_ptr<walWriter> descriptor_log;
   std::list<std::shared_ptr<Version>> versionlist;  // ersion构成的双向链表
   std::shared_ptr<Version> nowversion;  //链表头指向当前最新的Version
-  std::string compact_pointer[kNumLevels];  //记录每个层级下次compation启动的key
+  std::string
+      compact_pointer[kNumLevels];  //记录每个层级下次compation启动的key
 };
 }  // namespace yubindb
 #endif

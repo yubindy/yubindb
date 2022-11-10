@@ -47,8 +47,8 @@ class InternalKey {
   InternalKey() {}
   ~InternalKey() = default;
   const std::string_view getview() const { return std::string_view(Key); }
+  const std::string& getString() { return Key; }
   uint64_t parser(SequenceNum num, Valuetype type);
-
   bool DecodeFrom(std::string_view s) {
     Key.assign(s.data(), s.size());
     return !Key.empty();
