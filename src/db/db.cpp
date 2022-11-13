@@ -174,7 +174,7 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
       }
     }
     if (statue.ok()) {
-      statue = upt->InsertInto(imm_);
+      statue = upt->InsertInto(imm_);  // DEBUG this imm_ is null
     }
     mutex.lock();
     if (sync_error) {
@@ -256,6 +256,7 @@ State DBImpl::MakeRoomForwrite(bool force) {
       break;
     } else if (allow_delay &&
                versions_->NumLevelFiles(0) >= config::kL0_SlowdownWrites) {
+      // level0的文件数限制超过8,睡眠1ms,等待后台任务执行。写入writer线程向压缩线程转让cpu Todobetter?
     }
   }
   return State::Ok();

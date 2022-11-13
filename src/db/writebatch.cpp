@@ -70,6 +70,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         spdlog::error("unknown WriteBatch type");
         return State::Corruption("unknown WriteBatch type");
     }
+    seq++;
   }
   if (now_cnt != Count()) {
     spdlog::error("WriteBatch has wrong count has {} should {}", now_cnt,

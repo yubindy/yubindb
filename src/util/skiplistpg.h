@@ -33,7 +33,9 @@ inline int my_cmp(skiplist_node* a, skiplist_node* b, void* aux) {
 }
 class Skiplist {  // skiplist package
  public:
-  explicit Skiplist() { skiplist_init(&table, my_cmp); }
+  explicit Skiplist(std::shared_ptr<Arena> arena_) : arena(arena_) {
+    skiplist_init(&table, my_cmp);
+  }
 
   Skiplist(const Skiplist&) = delete;
   Skiplist& operator=(const Skiplist&) = delete;
@@ -49,7 +51,7 @@ class Skiplist {  // skiplist package
 
  private:
   skiplist_raw table;
-  std::unique_ptr<Arena> arena;  // for new and delete
+  std::shared_ptr<Arena> arena;  // for new and delete
 };
 }  // namespace yubindb
 #endif

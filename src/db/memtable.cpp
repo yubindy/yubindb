@@ -1,5 +1,8 @@
 #include "memtable.h"
 namespace yubindb {
+Memtable::Memtable()
+    : arena(std::make_shared<Arena>()),
+      table(std::make_unique<Skiplist>(arena)) {}
 void Memtable::FindShortestSeparator(std::string* start,
                                      std::string_view limit) {}
 void Memtable::FindShortSuccessor(std::string* key) {}

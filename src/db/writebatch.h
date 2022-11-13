@@ -38,6 +38,7 @@ class WriteBatch {
 
  private:
   std::string mate;
+  SequenceNum seq;
 };
 }  // namespace yubindb
 #endif

@@ -10,7 +10,7 @@
 namespace yubindb {
 class Memtable {
  public:
-  explicit Memtable() = default;  // TODO
+  Memtable();
   ~Memtable() = default;
 
   Memtable(const Memtable&) = delete;
@@ -24,9 +24,9 @@ class Memtable {
   bool Get(const Lookey& key, std::string* value, State* s);
 
  private:
-  std::unique_ptr<Skiplist> table;
   // std::unique_ptr<LruCache> cache;
-  std::unique_ptr<Arena> arena;
+  std::shared_ptr<Arena> arena;
+  std::unique_ptr<Skiplist> table;
   std::string tmp;
 };
 
