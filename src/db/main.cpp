@@ -22,5 +22,9 @@ int main() {
 
   s = db->Put(yubindb::WriteOptions(), key, value);
   assert(s.ok());
+
+  s = db->Get(yubindb::ReadOptions(), key, &value);
+  assert(status.ok());
+  std::cout << value << std::endl;
   return 0;
 }

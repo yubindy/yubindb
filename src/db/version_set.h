@@ -16,7 +16,7 @@ class VersionSet;
 class Version {
  public:
   struct Stats {
-    std::unique_ptr<FileMate> seek_file;
+    std::shared_ptr<FileMate> seek_file;
     int seek_file_level;
   };
   explicit Version(VersionSet* vset)
@@ -30,7 +30,7 @@ class Version {
  private:
   friend VersionSet;
   VersionSet* vset;
-  std::vector<std::unique_ptr<FileMate>>
+  std::vector<std::shared_ptr<FileMate>>
       files[kNumLevels];  // 每个级别的文件列表
   FileMate* filecompact;
   int filecompact_level;
@@ -74,8 +74,7 @@ class VersionSet {
   std::unique_ptr<walWriter> descriptor_log;
   std::list<std::shared_ptr<Version>> versionlist;  // ersion构成的双向链表
   std::shared_ptr<Version> nowversion;  //链表头指向当前最新的Version
-  std::string
-      compact_pointer[kNumLevels];  //记录每个层级下次compation启动的key
+  std::string compact_pointer[kNumLevels];  //记录每个层级下次compation启动的key
 };
 }  // namespace yubindb
 #endif

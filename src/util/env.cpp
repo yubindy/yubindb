@@ -293,7 +293,7 @@ void PosixEnv::Schedule(backwork work) {
 
   if (!started_background_thread) {
     started_background_thread = true;
-    std::thread background_thread(&PosixEnv::BackgroundThreadMain, this);
+    std::thread background_thread(work);
     background_thread.detach();
   }
 

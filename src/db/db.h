@@ -33,6 +33,8 @@ class DB {
   virtual ~DB(){};
   virtual State Put(const WriteOptions& options, std::string_view key,
                     std::string_view value) = 0;
+  virtual State Get(const ReadOptions& options, const std::string_view& key,
+                    std::string* value) = 0;
   virtual State Delete(const WriteOptions& options, std::string_view key) = 0;
   virtual State Write(const WriteOptions& options, WriteBatch* updates) = 0;
 };
@@ -47,19 +49,15 @@ class DBImpl : public DB {
             std::string_view value) override;
   State Delete(const WriteOptions& options, std::string_view key) override;
   State Write(const WriteOptions& options, WriteBatch* updates) override;
-  State Get(const ReadOptions& options, std::string_view key,
-            std::string_view* value);
-  State InsertInto(WriteBatch* batch, Memtable* mem);
+  State Get(const ReadOptions& options, const std::string_view& key,
+            std::string* value);
+  State InsertInto(WriteBatch* batch);
 
  private:
   struct Writer {
     explicit Writer(std::mutex* mutex_, bool sync_, bool done_,
                     WriteBatch* updates)
         : mutex(mutex_), sync(sync_), done(done_), batch(updates) {}
-    ~Writer() {
-      delete[] batch;
-      mutex->unlock();
-    }
     void wait() {
       std::unique_lock<std::mutex> p(*mutex);
       cond.wait(p);
@@ -67,7 +65,7 @@ class DBImpl : public DB {
     void signal() { cond.notify_one(); }
 
     std::condition_variable cond;
-    std::mutex* mutex;
+    std::mutex* mutex;  /// safe
     bool done;
     bool sync;
     State state;
@@ -75,7 +73,7 @@ class DBImpl : public DB {
   };
   State NewDB();
   WriteBatch* BuildBatch(Writer** rul);
-  WriteBatch* BuildBatchGroup(std::shared_ptr<DBImpl::Writer>* last_writer);
+  WriteBatch* BuildBatchGroup(DBImpl::Writer** last_writer);
   State Recover(VersionEdit* edit, bool* save_manifest);
   State MakeRoomForwrite(bool force);
   void DeleteObsoleteFiles();
@@ -97,8 +95,8 @@ class DBImpl : public DB {
   uint64_t logfilenum;
   std::shared_ptr<WritableFile> logfile;
   std::unique_ptr<walWriter> logwrite;
-  std::deque<std::shared_ptr<Writer>> writerque;
-  std::unique_ptr<WriteBatch> batch;
+  std::deque<Writer*> writerque;
+  std::shared_ptr<WriteBatch> batch;
 
   std::list<std::shared_ptr<const Snapshot>> snapshots;
   std::shared_ptr<TableCache> table_cache;

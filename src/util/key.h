@@ -100,6 +100,9 @@ class SkiplistKey {  // for skiplist
   std::string_view getview() const {
     return std::string_view(str + sizeof(interlen), interlen);
   }
+  std::string* getString(std::string* value) const {
+    value->assign(str, interlen, std::string::npos);
+  }
   size_t getintersize() { return interlen; }
   uint64_t Getag();
   std::string_view gettrueview() { return std::string_view(str); }

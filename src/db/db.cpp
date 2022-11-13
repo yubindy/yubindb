@@ -53,9 +53,9 @@ DBImpl::DBImpl(const Options* opt, const std::string& dbname)
       logfile(nullptr),
       logfilenum(0),
       logwrite(nullptr),
-      batch(new WriteBatch),
+      batch(std::make_shared<WriteBatch>()),
       background_compaction_(false),
-      versions_(new VersionSet(dbname, opt, table_cache)) {}
+      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache)) {}
 DBImpl::~DBImpl() {
   std::unique_lock<std::mutex> lk(mutex);
   shutting_down_.store(true, std::memory_order_release);
@@ -140,27 +140,28 @@ State DBImpl::Delete(const WriteOptions& opt, std::string_view key) {
   return Write(opt, &batch);
 }
 State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
-  std::shared_ptr<Writer> w =
-      std::make_shared<Writer>(&mutex, opt.sync, false, updates);
-
+  Writer w(&mutex, opt.sync, false, updates);
   std::unique_lock<std::mutex> ptr(mutex);  // mutex write
-  writerque.emplace_back(w);
-  while (!w->done && w != writerque.front()) {
-    w->wait();
+  writerque.emplace_back(&w);
+  while (!w.done && &w != writerque.front()) {
+    w.wait();
   }
-  if (w->done) {
-    return w->state;
+  if (w.done) {
+    return w.state;
   }
   // 写入前的各种检查为写入的数据留出足够的buffer,
   // MakeRoomForWrite方法会根据当前MemTable的使用率来选择是否触发Minor
   // Compaction
-  State statue = MakeRoomForwrite(updates == nullptr);  // is true,start merage
+
+  // sumState statue = MakeRoomForwrite(updates == nullptr);  // is true,start
+  // merage
+  State statue;
   uint64_t last_sequence = versions_->LastSequence();
-  std::shared_ptr<Writer>* now_writer = &w;
+  Writer* now_writer = &w;
   if (statue.ok() && updates != nullptr) {
-    WriteBatch* upt = BuildBatchGroup(now_writer);
+    WriteBatch* upt = BuildBatchGroup(&now_writer);
     updates->SetSequence(last_sequence + 1);
-    last_sequence = updates->Count();
+    last_sequence += updates->Count();
 
     //将数据写入到yubindb
     mutex.unlock();
@@ -173,7 +174,7 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
       }
     }
     if (statue.ok()) {
-      statue = InsertInto(upt, mem_.get());
+      statue = upt->InsertInto(imm_);
     }
     mutex.lock();
     if (sync_error) {
@@ -182,19 +183,19 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
   }
   versions_->SetLastSequence(last_sequence);
   while (true) {
-    std::shared_ptr<Writer> ready = writerque.front();
+    Writer* ready = writerque.front();
     writerque.pop_front();
-    if (ready.get() != w.get()) {
+    if (ready != &w) {
       ready->state = statue;
       ready->done = true;
       ready->signal();
     }
-    if (ready == *now_writer) break;
+    if (ready == now_writer) break;
   }  //直到last_writer通知为止。
   return State::Ok();
 }
-State DBImpl::Get(const ReadOptions& options, std::string_view key,
-                  std::string_view* value) {
+State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
+                  std::string* value) {
   State s;
   std::unique_lock<std::mutex> rlock(mutex);
   SequenceNum snapshot;
@@ -211,7 +212,7 @@ State DBImpl::Get(const ReadOptions& options, std::string_view key,
   Version::Stats stats;
   {
     rlock.unlock();
-    Lookey lk(key, snapshot);
+    const Lookey lk(key, snapshot);
     if (mem->Get(lk, value, &s)) {
       // done
     } else if (imm != nullptr && imm->Get(lk, value, &s)) {
@@ -227,24 +228,21 @@ State DBImpl::Get(const ReadOptions& options, std::string_view key,
   }
   return s;
 }
-State DBImpl::InsertInto(WriteBatch* batch, Memtable* mem) {
-  // TODO
-}
-WriteBatch* DBImpl::BuildBatchGroup(
-    std::shared_ptr<DBImpl::Writer>* last_writer) {
-  std::shared_ptr<Writer> fnt = writerque.front();
+
+WriteBatch* DBImpl::BuildBatchGroup(DBImpl::Writer** last_writer) {
+  Writer* fnt = writerque.front();
   WriteBatch* fntbatch = fnt->batch;
   uint64_t size = fntbatch->ByteSize();
   for (auto it = ++writerque.begin(); it != writerque.end(); it++) {
-    if (it->get()->sync != fnt->sync) {
+    if ((*it)->sync != fnt->sync) {
       last_writer = &(*it);
       break;
     }
-    if (size + it->get()->batch->ByteSize() > MaxBatchSize) {
+    if (size + (*it)->batch->ByteSize() > MaxBatchSize) {
       last_writer = &(*it);
       break;
     }
-    fntbatch->Append(*it->get()->batch);
+    fntbatch->Append((*it)->batch);
   }
   return fntbatch;
 }
@@ -315,5 +313,9 @@ void DBImpl::BackgroundCall() {
   background_work_finished_signal.notify_all();
 }
 void DBImpl::BackgroundCompaction() {  // TODO doing compaction
+  if (imm_ != nullptr) {
+    // CompactMemTable();
+    return;
+  }
 }
 }  // namespace yubindb

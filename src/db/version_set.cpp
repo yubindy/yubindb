@@ -1,8 +1,9 @@
 #include "version_set.h"
+
+#include <algorithm>
 namespace yubindb {
-class VersionSet::Builder;
 static int64_t TotalFileSize(
-    const std::vector<std::unique_ptr<FileMate>>& files) {
+    const std::vector<std::shared_ptr<FileMate>>& files) {
   int64_t sum = 0;
   for (size_t i = 0; i < files.size(); i++) {
     sum += files[i]->file_size;
@@ -22,38 +23,6 @@ VersionSet::VersionSet(const std::string& dbname_, const Options* options,
       descriptor_file(nullptr),
       descriptor_log(nullptr),
       nowversion(nullptr) {}
-State VersionSet::Recover(bool* save_manifest) {}  // TODO
-State VersionSet::LogAndApply(
-    VersionEdit* edit, std::mutex* mu) {  // nowversion+versionedit=nextversion
-  if (edit->has_log_number) {
-    assert(edit->log_number >= log_number);
-    assert(edit->log_number < next_file_number);
-  } else {
-    edit->SetLogNumber(log_number);
-  }
-  edit->SetNextFile(next_file_number);
-  edit->SetLastSequence(last_sequence);
-
-  std::unique_ptr<Version> v = std::make_unique<Version>(this);
-  {
-    Builder builder(this, nowversion);
-    builder.Apply(edit);
-    builder.SaveTo(v);
-  }
-}
-int64_t VersionSet::NumLevelBytes(int level) const {
-  return TotalFileSize(nowversion->files[level]);
-}
-void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
-  for (auto v = versionlist.begin(); v != versionlist.end(); v++) {
-    for (int level = 0; level < config::kNumLevels; level++) {
-      std::vector<std::unique_ptr<FileMate>>& files = (*v)->files[level];
-      for (size_t i = 0; i < files.size(); i++) {
-        live->insert(files[i]->num);
-      }
-    }
-  }
-}
 class VersionSet::Builder {  // helper form edit+version=next version
  private:
   struct BySmallestKey {  // sort small of class
@@ -66,8 +35,18 @@ class VersionSet::Builder {  // helper form edit+version=next version
         return (f1->num < f2->num);
       }
     }
+    bool operator()(const std::shared_ptr<FileMate>& f1,
+                    const std::shared_ptr<FileMate>& f2) const {
+      int r = cmp(f1->smallest.getview(), f2->smallest.getview());
+      if (r != 0) {
+        return (r < 0);
+      } else {
+        // Break ties by file number
+        return (f1->num < f2->num);
+      }
+    }
   };
-  typedef std::set<std::unique_ptr<FileMate>, BySmallestKey> FileSet;
+  typedef std::set<std::shared_ptr<FileMate>, BySmallestKey> FileSet;
   struct LevelState {
     std::set<uint64_t> deleted_files;
     std::shared_ptr<FileSet> added_files;
@@ -105,34 +84,34 @@ class VersionSet::Builder {  // helper form edit+version=next version
     // Add new files
     for (size_t i = 0; i < edit->new_files.size(); i++) {
       const int level = edit->new_files[i].first;
-      std::unique_ptr<FileMate> f =
-          std::make_unique<FileMate>(edit->new_files[i].second);
+      const std::shared_ptr<FileMate> f =
+          std::make_shared<FileMate>(edit->new_files[i].second);
 
       f->allowed_seeks = static_cast<int>(
           (f->file_size / 16384U));  // for seeks miss to compaction
       if (f->allowed_seeks < 100) f->allowed_seeks = 100;
 
       levels_[level].deleted_files.erase(f->num);
-      levels_[level].added_files->insert(std::move(f));
+      levels_[level].added_files->insert(f);
     }
   }
-  void SaveTo(Version* v) {
-    BySmallestKey cmp;
+  void SaveTo(std::unique_ptr<Version>& v) {
+    BySmallestKey cmper;
     for (int level = 0; level < config::kNumLevels; level++) {
-      // Merge the set of added files with the set of pre-existing files.
-      // Drop any deleted files.  Store the result in *v.
       // 将base_files、added_files排序后存储到Version*
       // v中，排序过程中需要丢弃的已删除的file。
-      const std::vector<std::unique_ptr<FileMate>>& base_files =
+      const std::vector<std::shared_ptr<FileMate>>& base_files =
           base_->files[level];  // now version
-      auto base_iter = base_files.begin();
-      auto base_end = base_files.end();
+      std::vector<std::shared_ptr<FileMate>>::const_iterator base_iter =
+          base_files.begin();
+      std::vector<std::shared_ptr<FileMate>>::const_iterator base_end =
+          base_files.end();
       const std::shared_ptr<FileSet> added_files = levels_[level].added_files;
       v->files[level].reserve(base_files.size() + added_files->size());
       for (const auto& added_file : *added_files) {
         // Add all smaller files listed in base_
-        for (std::vector<std::unique<FileMate>>::const_iterator bpos =
-                 std::upper_bound(base_iter, base_end, added_file, cmp);
+        for (auto bpos =
+                 std::upper_bound(base_iter, base_end, added_file, cmper);
              base_iter != bpos; ++base_iter) {
           MaybeAddFile(v, level, *base_iter);
         }
@@ -146,26 +125,27 @@ class VersionSet::Builder {  // helper form edit+version=next version
       }
 
       // Make sure there is no overlap in levels > 0
-      if (level > 0) {
+      if (level > 0) {  // TODO level and teir
         for (uint32_t i = 1; i < v->files[level].size(); i++) {
           InternalKey& prev_end = v->files[level][i - 1]->largest;
           InternalKey& this_begin = v->files[level][i]->smallest;
           if (cmp(prev_end.getview(), this_begin.getview()) >= 0) {
             fprintf(stderr, "overlapping ranges in same level %s vs. %s\n",
-                    prev_end.DebugString().c_str(),
-                    this_begin.DebugString().c_str());
+                    prev_end.getString().c_str(),
+                    this_begin.getString().c_str());
             abort();
           }
         }
       }
     }
   }
-  void MaybeAddFile(Version* v, int level, std::unique_ptr<FileMate>& f) {
+  void MaybeAddFile(std::unique_ptr<Version>& v, int level,
+                    const std::shared_ptr<FileMate>& f) {
     if (levels_[level].deleted_files.count(f->num) > 0) {
       // File is deleted: do nothing
     } else {
-      std::vector<std::unique_ptr<FileMate>>* files = &v->files[level];
-      if (level > 0 && !files->empty()) {
+      std::vector<std::shared_ptr<FileMate>>* files = &v->files[level];
+      if (level > 0 && !files->empty()) {  // TODO level and teir
         // Must not overlap
         assert(cmp((*files)[files->size() - 1]->largest.getview(),
                    f->smallest.getview()) < 0);
@@ -174,4 +154,39 @@ class VersionSet::Builder {  // helper form edit+version=next version
     }
   }
 };
+State VersionSet::Recover(bool* save_manifest) {
+  *save_manifest = false;
+}  // TODO
+State VersionSet::LogAndApply(
+    VersionEdit* edit, std::mutex* mu) {  // nowversion+versionedit=nextversion
+  if (edit->has_log_number) {
+    assert(edit->log_number >= log_number);
+    assert(edit->log_number < next_file_number);
+  } else {
+    edit->SetLogNumber(log_number);
+  }
+  edit->SetNextFile(next_file_number);
+  edit->SetLastSequence(last_sequence);
+
+  std::unique_ptr<Version> v = std::make_unique<Version>(this);
+  {
+    Builder builder(this, nowversion);
+    builder.Apply(edit);
+    builder.SaveTo(v);
+  }
+  // TODO
+}
+int64_t VersionSet::NumLevelBytes(int level) const {
+  return TotalFileSize(nowversion->files[level]);
+}
+void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
+  for (auto v = versionlist.begin(); v != versionlist.end(); v++) {
+    for (int level = 0; level < config::kNumLevels; level++) {
+      std::vector<std::shared_ptr<FileMate>>& files = (*v)->files[level];
+      for (size_t i = 0; i < files.size(); i++) {
+        live->insert(files[i]->num);
+      }
+    }
+  }
+}
 }  // namespace yubindb

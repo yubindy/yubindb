@@ -9,11 +9,7 @@
 #include <vector>
 
 int main() {
-  std::unique_ptr<int> p = std::make_unique<int>(13);
-  std::set<std::unique_ptr<int>> pp;
-  pp.insert(std::move(p));
-  for (auto& i : pp) {
-    printf("%d", *i);
-  }
+  std::set<int> p;
+  p.insert()
   return 0;
 }
