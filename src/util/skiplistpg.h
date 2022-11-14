@@ -12,6 +12,7 @@ struct node {
  public:
   node() = default;
   node(const SkiplistKey& key_) : key(key_.Key()),val(key_.Val()) {}
+  node(const InternalKey& key_) : key(key_) {}
   ~node() = default;
 
   friend class Skiplist;
@@ -45,7 +46,7 @@ class Skiplist {  // skiplist package
   bool Equal(SkiplistKey& a, SkiplistKey& b) const {
     return (cmp(a.Key(), b.Key()) == 0);
   }
-  skiplist_node* Seek(const SkiplistKey& key);
+  skiplist_node* Seek(const InternalKey& key);
   skiplist_node* SeekToFirst();
   skiplist_node* SeekToLast();
   bool GreaterEqual(SkiplistKey& a, SkiplistKey& b);

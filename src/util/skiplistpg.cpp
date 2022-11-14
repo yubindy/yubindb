@@ -15,12 +15,12 @@ bool Skiplist::GreaterEqual(SkiplistKey& a, SkiplistKey& b) {
   }
   return true;
 }
-skiplist_node* Skiplist::Seek(const SkiplistKey& key) {
+skiplist_node* Skiplist::Seek(const InternalKey& key)  {
   node p(key);
   skiplist_node* t = skiplist_find_greater_or_equal(&table, &p.snode);
   node* pp = _get_entry(t, node, snode);
   int r =
-      key.Key().ExtractUserKey().compare(pp->key.ExtractUserKey());
+      key.ExtractUserKey().compare(pp->key.ExtractUserKey());
   if (r != 0) {
     t = nullptr;
   }

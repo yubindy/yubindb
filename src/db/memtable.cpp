@@ -21,13 +21,13 @@ void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
   p += key_size;
   EncodeFixed64(p, (seq << 8 | type));
   p += 8;
-  p = EncodeVarint32(p, val_size);
-  std::memcpy(p, value.data(), val_size);
-  table->Insert(SkiplistKey(buf));
+  char* pt = EncodeVarint32(p, val_size);
+  std::memcpy(pt, value.data(), val_size);
+  table->Insert(SkiplistKey(buf,encond_len));
 }
 bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
-  SkiplistKey skipkey(key.skiplist_key().data());
-  skiplist_node* t = table->Seek(skipkey);
+  InternalKey keys(key.internal_key().data());
+  skiplist_node* t = table->Seek(keys);
   if (t != nullptr) {
     node* found = _get_entry(t, node, snode);
     if ((found->key.Getag() & 0xf) == kTypeValue) {
