@@ -12,14 +12,14 @@ struct Options {
 
   int max_open_files = 1000;
 
-  size_t block_size = 4 * 1024;
+  uint32_t block_size = 4 * 1024;
 
   int block_restart_interval = 16;
 
   uint64_t write_buffer_size = 4 * 1024 * 1024;  // 4M
   // todo immtable queue
 
-  size_t max_file_size = 2 * 1024 * 1024;
+  uint32_t max_file_size = 2 * 1024 * 1024;
 
   bool reuse_logs = false;
 

@@ -40,7 +40,7 @@ int main() {
     // Initialize node.
     skiplist_init_node(&nodes[i]->snode);
     // Assign key and value.
-    nodes[i]->key = i;
+    nodes[i]->key = i*10;
     nodes[i]->value = i * 10;
     // Insert into skiplist.
     skiplist_insert(&slist, &nodes[i]->snode);
@@ -59,7 +59,7 @@ int main() {
   for (int i = 0; i < 3; ++i) {
     // Define a query.
     struct my_node query;
-    query.key = i;
+    query.key = i*10;
     // Find a skiplist node `cursor`.
     skiplist_node* cursor = skiplist_find(&slist, &query.snode);
     printf("sss-%d\n", skiplist_is_valid_node(cursor));
@@ -71,8 +71,13 @@ int main() {
     printf("[point lookup] key: %d, value: %d\n", found->key, found->value);
     // Release `cursor` (== &found->snode).
     // Other thread cannot free `cursor` until `cursor` is released.
-    skiplist_release_node(cursor);
   }
+  struct my_node query;
+  query.key = 15;
+  skiplist_node* cursor = skiplist_find_greater_or_equal(&slist, &query.snode);
+  if (!cursor) return 0;
+  struct my_node* found = _get_entry(cursor, struct my_node, snode);
+  printf("[point lookup] key: %d, value: %d\n", found->key, found->value);
   skiplist_free(&slist);
   return 0;
 }

@@ -30,7 +30,7 @@ void VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint64(dst, last_sequence);
   }
 
-  for (size_t i = 0; i < compact_pointers.size(); i++) {
+  for (uint32_t i = 0; i < compact_pointers.size(); i++) {
     PutVarint32(dst, kCompactPointer);
     PutVarint32(dst, compact_pointers[i].first);  // level
     PutLengthPrefixedview(dst, compact_pointers[i].second.getview());
@@ -42,7 +42,7 @@ void VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint64(dst, deleted_file_kvp.second);  // file number
   }
 
-  for (size_t i = 0; i < new_files.size(); i++) {
+  for (uint32_t i = 0; i < new_files.size(); i++) {
     const FileMate& f = new_files[i].second;
     PutVarint32(dst, kNewFile);
     PutVarint32(dst, new_files[i].first);  // level

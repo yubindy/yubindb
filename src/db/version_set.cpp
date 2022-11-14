@@ -27,17 +27,18 @@ class VersionSet::Builder {  // helper form edit+version=next version
  private:
   struct BySmallestKey {  // sort small of class
     bool operator()(FileMate* f1, FileMate* f2) const {
-      int r = cmp(f1->smallest.getview(), f2->smallest.getview());
+      int r = cmp(f1->smallest, f2->smallest);
       if (r != 0) {
         return (r < 0);
       } else {
         // Break ties by file number
         return (f1->num < f2->num);
       }
+      return true;
     }
     bool operator()(const std::shared_ptr<FileMate>& f1,
                     const std::shared_ptr<FileMate>& f2) const {
-      int r = cmp(f1->smallest.getview(), f2->smallest.getview());
+      int r = cmp(f1->smallest, f2->smallest);
       if (r != 0) {
         return (r < 0);
       } else {
@@ -129,7 +130,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
         for (uint32_t i = 1; i < v->files[level].size(); i++) {
           InternalKey& prev_end = v->files[level][i - 1]->largest;
           InternalKey& this_begin = v->files[level][i]->smallest;
-          if (cmp(prev_end.getview(), this_begin.getview()) >= 0) {
+          if (cmp(prev_end, this_begin) >= 0) {
             fprintf(stderr, "overlapping ranges in same level %s vs. %s\n",
                     prev_end.getString().c_str(),
                     this_begin.getString().c_str());
@@ -147,8 +148,8 @@ class VersionSet::Builder {  // helper form edit+version=next version
       std::vector<std::shared_ptr<FileMate>>* files = &v->files[level];
       if (level > 0 && !files->empty()) {  // TODO level and teir
         // Must not overlap
-        assert(cmp((*files)[files->size() - 1]->largest.getview(),
-                   f->smallest.getview()) < 0);
+        assert(cmp((*files)[files->size() - 1]->largest,
+                   f->smallest) < 0);
       }
       files->push_back(f);
     }

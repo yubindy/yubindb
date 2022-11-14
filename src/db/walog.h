@@ -43,7 +43,7 @@ class walWriter {
   State Appendrecord(std::string_view str);
 
  private:
-  State Flushphyrecord(RecordType type, const char* buf_, size_t size);
+  State Flushphyrecord(RecordType type, const char* buf_, uint32_t size);
   std::shared_ptr<WritableFile> file;
   int block_offset;
   uint32_t type_crc[kLastType + 1];

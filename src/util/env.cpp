@@ -55,8 +55,8 @@ State WriteStringToFile(PosixEnv* env, std::string_view data,
   }
   return s;
 }
-State WritableFile::Append(const char* ptr, size_t size) {
-  size_t wrsize = std::min(size, kWritableFileBufferSize - offset);
+State WritableFile::Append(const char* ptr, uint32_t size) {
+  uint32_t wrsize = std::min(size, kWritableFileBufferSize - offset);
   const char* wrptr = ptr;
   std::memcpy(buf_, ptr, wrsize);
   size -= wrsize;

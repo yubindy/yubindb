@@ -5,20 +5,20 @@
 namespace yubindb {
 
 State walWriter::Appendrecord(std::string_view str) {
-  uint64_t size = str.size();
+  uint32_t size = str.size();
   const char* ptr = str.data();
   bool begin = true, end;
   RecordType type;
   State s;
   while (size > 0) {
-    uint64_t blockleft = kBlockSize - block_offset;
+    uint32_t blockleft = kBlockSize - block_offset;
     if (blockleft < kHeaderSize) {
       if (blockleft > 0) {
         file->Append(std::string("\x00\x00\x00\x00\x00\x00", blockleft));
       }
       block_offset = 0;
     }
-    const size_t avail = kBlockSize - block_offset - kHeaderSize;
+    const uint32_t avail = kBlockSize - block_offset - kHeaderSize;
     bool end = avail > size ? size : avail;
     if (begin && end) {
       type = kFullType;
@@ -36,7 +36,7 @@ State walWriter::Appendrecord(std::string_view str) {
   return s;
 }
 State walWriter::Flushphyrecord(RecordType type, const char* buf_,
-                                size_t size) {
+                                uint32_t size) {
   assert(block_offset + kHeaderSize + size <= kBlockSize);
   spdlog::info("wal write flushrecord type: {} msg: {} size: {}", type, buf_,
                size);

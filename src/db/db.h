@@ -26,7 +26,7 @@ struct WriteOptions;
 struct Writer;
 class VersionSet;
 
-const static size_t MaxBatchSize = 1024;
+const static uint32_t MaxBatchSize = 1024;
 class DB {
  public:
   explicit DB() {}

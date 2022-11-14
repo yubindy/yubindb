@@ -5,7 +5,7 @@
 #include "spdlog/spdlog.h"
 namespace yubindb {
 //前8字节是该WriteBatch的SequenceNumber，后4字节是该WriteBatch中Entry的数量
-static const size_t Headsize = 12;
+static const uint32_t Headsize = 12;
 void WriteBatch::Clear() {
   mate.clear();
   mate.resize(Headsize);

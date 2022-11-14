@@ -3,12 +3,23 @@
 #include <map>
 #include <set>
 #include <string_view>
-
 #include "../util/key.h"
 namespace yubindb {
 struct FileMate {  // file mate
-  FileMate() = default;
+  FileMate()=default;
   ~FileMate() = default;
+  FileMate(FileMate& ptr):allowed_seeks(ptr.allowed_seeks),
+    seek(ptr.seek),
+    num(ptr.num),
+    file_size(ptr.file_size), 
+    smallest(ptr.smallest),
+    largest(ptr.largest){}
+  FileMate(FileMate&& ptr):allowed_seeks(ptr.allowed_seeks),
+    seek(ptr.seek),
+    num(ptr.num),
+    file_size(ptr.file_size), 
+    smallest(ptr.smallest),
+    largest(ptr.largest){}
   int allowed_seeks;
   bool seek;  // if compaction is not
   uint64_t num;
@@ -75,7 +86,7 @@ class VersionEdit {
   bool has_next_file_number;
   bool has_last_sequence;
 
-  std::vector<std::pair<int, InternalKey>>
+  std::vector<std::pair<int,InternalKey>>
       compact_pointers;  // <level, 对应level的下次compation启动的key>
   DeletedFileSet deleted_files;
   std::vector<std::pair<int, FileMate>> new_files;  // <level，文件描述信息>

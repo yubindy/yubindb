@@ -17,7 +17,7 @@ class Memtable {
   Memtable& operator=(const Memtable&) = delete;
   void FindShortestSeparator(std::string* start, std::string_view limit);
   void FindShortSuccessor(std::string* key);
-  size_t ApproximateMemoryUsage();
+  uint32_t ApproximateMemoryUsage();
   // Iterator* NewIterator(); //TODO?
   void Add(SequenceNum seq, Valuetype type, std::string_view key,
            std::string_view value);

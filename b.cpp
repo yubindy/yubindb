@@ -9,7 +9,9 @@
 #include <vector>
 
 int main() {
-  std::set<int> p;
-  p.insert()
+  uint32_t p = 2;
+  uint32_t pp=4;
+  printf("%d %d", sizeof(p),sizeof(pp));
+  std::string_view p;
   return 0;
 }

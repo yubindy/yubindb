@@ -174,7 +174,7 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
       }
     }
     if (statue.ok()) {
-      statue = upt->InsertInto(imm_);  // DEBUG this imm_ is null
+      statue = upt->InsertInto(mem_);
     }
     mutex.lock();
     if (sync_error) {
@@ -283,7 +283,7 @@ void DBImpl::DeleteObsoleteFiles() {  // delete outtime file
   env->GetChildren(dbname, &filenames);
 
   mutex.unlock();
-  for (size_t i = 0; i < filenames.size(); i++) {
+  for (uint32_t i = 0; i < filenames.size(); i++) {
     // TODO 删除过时的文件，思考添加kv分离的gc
   }
 }

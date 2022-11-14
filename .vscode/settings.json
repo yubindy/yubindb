@@ -1,5 +1,5 @@
-{
-  //"C_Cpp.errorSquiggles": "Disabled",
+ {
+    "C_Cpp.intelliSenseEngine": "Disabled",
   "files.associations": {
     "random": "c",
     "math.h": "c",
@@ -173,5 +173,4 @@
     "fortran_fixed-form": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
     "fortran": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
   },
-  "cmake.sourceDirectory": "${workspaceFolder}/c++/suibian"
 }

@@ -11,7 +11,7 @@ namespace yubindb {
 struct node {
  public:
   node() = default;
-  node(const SkiplistKey& key_) : key(key_) {}
+  node(const SkiplistKey& key_) : key(key_.Key()),val(key_.Val()) {}
   ~node() = default;
 
   friend class Skiplist;
@@ -19,7 +19,9 @@ struct node {
   // Metadata for skiplist node.
   skiplist_node snode;
   // My data here: {int, int} pair.
-  SkiplistKey key;
+  
+  InternalKey key;
+  std::string val; //value size (varint32) + value std::string
 };
 
 // Define a comparison function for `my_node`.
@@ -29,19 +31,19 @@ inline int my_cmp(skiplist_node* a, skiplist_node* b, void* aux) {
   aa = _get_entry(a, node, snode);
   bb = _get_entry(b, node, snode);
 
-  return cmp(aa->key.getview(), bb->key.getview());
+  return cmp(aa->key, bb->key);
 }
 class Skiplist {  // skiplist package
  public:
-  explicit Skiplist(std::shared_ptr<Arena> arena_) : arena(arena_) {
+  explicit Skiplist(std::shared_ptr<Arena>& arena_) : arena(arena_) {
     skiplist_init(&table, my_cmp);
   }
 
   Skiplist(const Skiplist&) = delete;
   Skiplist& operator=(const Skiplist&) = delete;
-  void Insert(SkiplistKey key_);
+  void Insert(SkiplistKey skiplistkv) ; 
   bool Equal(SkiplistKey& a, SkiplistKey& b) const {
-    return (cmp(a.getview(), b.getview()) == 0);
+    return (cmp(a.Key(), b.Key()) == 0);
   }
   skiplist_node* Seek(const SkiplistKey& key);
   skiplist_node* SeekToFirst();
