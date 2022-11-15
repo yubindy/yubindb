@@ -157,6 +157,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
 };
 State VersionSet::Recover(bool* save_manifest) {
   *save_manifest = false;
+  return State::Ok();
 }  // TODO
 State VersionSet::LogAndApply(
     VersionEdit* edit, std::mutex* mu) {  // nowversion+versionedit=nextversion

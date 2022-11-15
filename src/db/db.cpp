@@ -5,6 +5,7 @@
 #include "../util/filename.h"
 #include "snapshot.h"
 #include "spdlog/spdlog.h"
+#include "src/util/common.h"
 #include "version_edit.h"
 class Version;
 class VersionSet;
@@ -88,6 +89,7 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   }
   SequenceNum max_sequence(0);
   // TODO
+  return State::Ok();
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;
@@ -99,7 +101,7 @@ State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   bool save_manifest = false;
   State s = impl->Recover(&edit, &save_manifest);  //恢复自身状态。
   if (s.ok() && impl->mem_ == nullptr) {
-    // Create new log and a corresponding memtable.
+    // Create newlog and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();
     std::shared_ptr<WritableFile> lfile;
     s = impl->env->NewWritableFile(LogFileName(name, new_log_number), lfile);

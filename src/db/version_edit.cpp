@@ -136,7 +136,7 @@ State VersionEdit::DecodeFrom(std::string_view src) {
 
   State result;
   if (msg != nullptr) {
-    result = State::Corruption(msg);
+    result = State::Corruption();
     spdlog::error(msg);
   }
   return result;

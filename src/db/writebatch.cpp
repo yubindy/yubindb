@@ -54,7 +54,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
                         kTypeValue, key, value);
         } else {
           spdlog::error("bad WriteBatch Put");
-          return State::Corruption("bad WriteBatch Put");
+          return State::Corruption();
         }
         break;
       case kTypeDeletion:
@@ -64,19 +64,19 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
                         kTypeDeletion, key, value);
         } else {
           spdlog::error("bad WriteBatch Del");
-          return State::Corruption("bad WriteBatch Del");
+          return State::Corruption();
         }
         break;
       default:
         spdlog::error("unknown WriteBatch type");
-        return State::Corruption("unknown WriteBatch type");
+        return State::Corruption();
     }
     seq++;
   }
   if (now_cnt != Count()) {
     spdlog::error("WriteBatch has wrong count has {} should {}", now_cnt,
                   Count());
-    return State::Corruption("WriteBatch has wrong count");
+    return State::Corruption();
   } else {
     return State::Ok();
   }

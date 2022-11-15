@@ -1,4 +1,5 @@
 #include "memtable.h"
+#include "src/util/common.h"
 namespace yubindb {
 Memtable::Memtable()
     : arena(std::make_shared<Arena>()),
@@ -15,7 +16,7 @@ void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
   uint32_t internal_size = key_size + 8;
   const uint32_t encond_len = VarintLength(internal_size) + internal_size +
                             VarintLength(val_size) + val_size;
-  char* buf = arena->Alloc(encond_len);
+  char* buf = arena->AllocateAligned(encond_len);
   char* p = EncodeVarint32(buf, internal_size);
   std::memcpy(p, key.data(), key_size);
   p += key_size;
@@ -33,7 +34,8 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
     if ((found->key.Getag() & 0xf) == kTypeValue) {
       uint32_t val_size;
       getsize(found->val.data(),val_size);
-      value->assign(found->val,VarintLength(val_size),val_size);
+      value->resize(val_size);
+      memcpy(value->data(),found->val.c_str()+VarintLength(val_size),val_size);
       return true;
     } else if ((found->key.Getag() & 0xf) == kTypeDeletion) {
       return false;

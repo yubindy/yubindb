@@ -51,7 +51,7 @@ State walWriter::Flushphyrecord(RecordType type, const char* buf_,
   if (!s.ok()) {
     return s;
   }
-  s = file->Append(buf, size);
+  s = file->Append(buf_, size);
   if (!s.ok()) {
     return s;
   }

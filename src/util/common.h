@@ -1,7 +1,8 @@
 #ifndef YUBINDB_COMMON_H_
 #define YUBINDB_COMMON_H_
-#include <cstddef>
 #include <memory.h>
+
+#include <cstddef>
 #include <string_view>
 
 #include "spdlog/spdlog.h"
@@ -83,50 +84,6 @@ const char* GetLengthPrefixedview(const char* p, const char* limit,
                                   std::string_view* result);
 bool GetLengthPrefixedview(std::string_view* input, std::string_view* result);
 class State {
- public:
-  State() : state_(nullptr) {}
-  ~State() = default;
-
-  State(const State& rhs) {
-    state_ = (rhs.state_ == nullptr) ? nullptr : CopyState(rhs.state_);
-  }
-  State& operator=(const State& rhs) {
-    if (state_ != nullptr) {
-      delete[] state_;
-      state_ = (rhs.state_ == nullptr) ? nullptr : CopyState(rhs.state_);
-    }
-    return *this;
-  }
-
-  State(State&& rhs) noexcept : state_(rhs.state_) { rhs.state_ = nullptr; }
-  static State Ok() { return State(); }
-  static State Notfound(const std::string& msg) {
-    return State(knotfound, msg);
-  }
-  static State Corruption(const std::string& msg) {
-    return State(kcorruption, msg);
-  }
-  static State NotSupported(const std::string& msg) {
-    return State(knotsupported, msg);
-  }
-  static State InvalidArgument(const std::string& msg) {
-    return State(kinvalidargument, msg);
-  }
-  static State IoError(const std::string& msg) { return State(kioerror, msg); }
-  bool ok() const { return (state_ == nullptr); }
-
-  bool IsNotFound() const { return code() == knotfound; }
-
-  bool IsCorruption() const { return code() == kcorruption; }
-
-  bool IsIOError() const { return code() == kioerror; }
-
-  bool IsNotSupportedError() const { return code() == knotsupported; }
-
-  bool IsInvalidArgument() const { return code() == kinvalidargument; }
-  std::string ToString() const;
-
- private:
   enum Code {
     kok = 0,
     knotfound = 1,
@@ -135,13 +92,46 @@ class State {
     kinvalidargument = 4,
     kioerror = 5
   };
-  Code code() const {
-    return (state_ == nullptr) ? kok : static_cast<Code>(state_[4]);
+
+ public:
+  State() : state_(kok) {}
+  State(Code ptr) : state_(ptr) {}
+  ~State() = default;
+
+  State(const State& rhs) { state_ = rhs.code(); }
+  State& operator=(const State& rhs) {
+    state_ = rhs.code();
+    return *this;
   }
 
-  State(Code code, const std::string& msg);
-  const char* CopyState(const char* s);
-  const char* state_;
+  State(State&& rhs) noexcept : state_(rhs.state_) {}
+  static State Ok() { return State(); }
+  static State Notfound() { return State(knotfound); }
+  static State Corruption() { return State(kcorruption); }
+  static State NotSupported() {
+    return State(knotsupported);
+  }
+  static State InvalidArgument() {
+    return State(kinvalidargument);
+  }
+  static State IoError() { return State(kioerror); }
+  bool ok() const { return (state_ == kok); }
+
+  bool IsNotFound() const { return state_ == knotfound; }
+
+  bool IsCorruption() const { return state_ == kcorruption; }
+
+  bool IsIOError() const { return state_ == kioerror; }
+
+  bool IsNotSupportedError() const { return state_ == knotsupported; }
+
+  bool IsInvalidArgument() const { return state_ == kinvalidargument; }
+  std::string ToString() const;
+
+ private:
+  Code code() const { return state_; }
+
+  Code state_;
 };
 }  // namespace yubindb
 #endif

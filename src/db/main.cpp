@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <spdlog/spdlog.h>
+
 #include <iostream>
 #include <string>
 
@@ -18,13 +20,21 @@ int main() {
 
   // write key1,value1
   std::string key = "key";
-  std::string value = "value";
-
-  s = db->Put(yubindb::WriteOptions(), key, value);
+  std::string value = "fdsfsd";
+  for (int i = 0; i < 10; i++) {
+    key.append(std::to_string(i));
+    value.append(std::to_string(i));
+    s = db->Put(yubindb::WriteOptions(), key, value);
+    spdlog::info("K: {} V:{}", key, value);
+  }
+  s = db->Put(yubindb::WriteOptions(),"key0","issb");
   assert(s.ok());
-
-  s = db->Get(yubindb::ReadOptions(), key, &value);
-  assert(status.ok());
-  std::cout << value << std::endl;
+  std::string key1="key";
+  for (int i = 0; i < 10; i++) {
+    key1.append(std::to_string(i));
+    s = db->Get(yubindb::ReadOptions(), key1, &value);
+    assert(status.ok());
+    std::cout << value << std::endl;
+  }
   return 0;
 }
