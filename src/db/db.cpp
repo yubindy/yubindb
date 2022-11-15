@@ -2,10 +2,15 @@
 
 #include <memory.h>
 
+#include <memory>
+#include <mutex>
+
 #include "../util/filename.h"
 #include "snapshot.h"
 #include "spdlog/spdlog.h"
 #include "src/util/common.h"
+#include "src/util/env.h"
+#include "src/util/options.h"
 #include "version_edit.h"
 class Version;
 class VersionSet;
@@ -253,13 +258,35 @@ State DBImpl::MakeRoomForwrite(bool force) {
   // TODO
   bool allow_delay = !force;
   State s;
+  std::unique_lock<std::mutex> lks(mutex);
   while (true) {
     if (!bg_error.ok()) {
       s = bg_error;
       break;
     } else if (allow_delay &&
                versions_->NumLevelFiles(0) >= config::kL0_SlowdownWrites) {
-      // level0的文件数限制超过8,睡眠1ms,等待后台任务执行。写入writer线程向压缩线程转让cpu Todobetter?
+      // level0的文件数限制超过8,睡眠1ms,等待后台任务执行。写入writer线程向压缩线程转让cpu
+      // Todobetter?
+      mutex.unlock();
+      ::sleep(1000);
+      allow_delay = false;  // sleep too large
+      lks.unlock();
+    } else if (!force &&
+               (mem_->ApproximateMemoryUsage() <= opts->write_buffer_size)) {
+      break;
+    } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWrites) {
+      spdlog::warn("Too many L0 files; waiting...");
+      background_work_finished_signal.wait(lks);
+    } else if (imm_ != nullptr) {
+      spdlog::info("Current memtable full; waiting...");
+      background_work_finished_signal.wait(lks);
+    } else {
+      //到新的memtable并触发旧的进行compaction
+      uint64_t new_log_number = versions_->NewFileNumber();
+      std::unique_ptr<WritableFile> lfile=nullptr;
+      s = env->NewWritableFile(LogFileName(dbname, new_log_number),
+                                lfile);  //生成新的log文件
+      
     }
   }
   return State::Ok();

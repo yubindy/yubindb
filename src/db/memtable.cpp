@@ -7,7 +7,7 @@ Memtable::Memtable()
 void Memtable::FindShortestSeparator(std::string* start,
                                      std::string_view limit) {}
 void Memtable::FindShortSuccessor(std::string* key) {}
-uint32_t Memtable::ApproximateMemoryUsage() {}
+uint32_t Memtable::ApproximateMemoryUsage() { return table->Getsize();}
 // Iterator* NewIterator(); //TODO?
 void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
                    std::string_view value) {

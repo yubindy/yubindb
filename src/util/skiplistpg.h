@@ -4,7 +4,7 @@
 #include <memory.h>
 #include <memory>
 #include <string_view>
-
+#include <atomic>
 #include "arena.h"
 #include "key.h"
 #include "skiplist.h"
@@ -55,11 +55,12 @@ class Skiplist {  // skiplist package
   skiplist_node* SeekToLast();
   bool GreaterEqual(SkiplistKey& a, SkiplistKey& b);
   bool KeyIsAfterNode(SkiplistKey& key, node* n) const;
-
+  size_t Getsize(){return arena->MemoryUsage()+size;}
  private:
   skiplist_raw table;
   std::shared_ptr<Arena> arena;  // for new and delete
   std::vector<std::unique_ptr<node>> nodes;
+  std::atomic<size_t> size;
 };
 }  // namespace yubindb
 #endif

@@ -61,7 +61,7 @@ class InternalKey {
     assert(Key.size() >= 8);
     return std::string_view(Key.data(), Key.size() - 8);
   }
-
+  size_t size() {return Key.size();}
  private:
   friend class SkiplistKey;
   std::string Key;
