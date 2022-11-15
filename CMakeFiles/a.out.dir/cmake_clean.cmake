@@ -1,4 +1,4 @@
-file(REMOVE_RECURSE
+bfile(REMOVE_RECURSE
   "CMakeFiles/a.out.dir/spdlog.cpp.o"
   "CMakeFiles/a.out.dir/spdlog.cpp.o.d"
   "a.out"

@@ -130,5 +130,7 @@ class PosixEnv {  // TODO static
   std::set<std::string> filelock;
   std::mutex filemutex;  // lock filelock
 };
+State SetCurrentFile(PosixEnv* env, const std::string& dbname,
+                     uint64_t file_number);
 }  // namespace yubindb
 #endif

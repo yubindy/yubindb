@@ -8,9 +8,9 @@
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang++",
-            "cStandard": "gnu11",
+            "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-clang-x64"
+            "compileCommands": "/home/yubtin/codes/yubindb/compile_commands.json"
         }
     ],
     "version": 4

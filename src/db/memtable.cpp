@@ -23,17 +23,17 @@ void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
   p += 8;
   char* pt = EncodeVarint32(p, val_size);
   std::memcpy(pt, value.data(), val_size);
-  table->Insert(SkiplistKey(buf,encond_len));
+  table->Insert(SkiplistKey(buf));
 }
 bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
-  InternalKey keys(key.internal_key().data());
+  InternalKey keys(key.internal_key());
   skiplist_node* t = table->Seek(keys);
   if (t != nullptr) {
     node* found = _get_entry(t, node, snode);
     if ((found->key.Getag() & 0xf) == kTypeValue) {
       uint32_t val_size;
-      getsize(found->val.data(),val_size);
-      value->assign(found->val,VarintLength(val_size),val_size);
+      getsize(found->val->data(),val_size);
+      value->assign(*(found->val),VarintLength(val_size),val_size);
       return true;
     } else if ((found->key.Getag() & 0xf) == kTypeDeletion) {
       return false;
@@ -41,6 +41,7 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
   } else {
     return false;
   }
+
 }
 
 }  // namespace yubindb

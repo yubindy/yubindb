@@ -1,13 +1,14 @@
 #include<stdio.h>
 #include<string.h>
+#include <memory>
 #include<string>
 #include<iostream>
 int main() {
-  char* b="\0\0\012345";
-  std::string p;
-  p.resize(8);
-  memcpy(p.data(),b,8);
-  printf("%s %d",p.data(),p.size());
-  std::cout<<p<<std::endl;
+  
+  std::unique_ptr<std::string>p;
+  p=std::make_unique<std::string>();
+  ::memcpy(p->data(),"1\0 ab",5);
+  std::cout<<p->data() <<std::endl;
+  printf("%s",p->data());
   return 0;
 }

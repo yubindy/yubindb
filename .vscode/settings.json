@@ -115,12 +115,6 @@
     "slist": "cpp",
     "cerrno": "cpp"
   },
-  "clang.cxxflags": [ // 控制c++静态检测时的参数
-    "-I",
-    "./src/util/.h*", // 自己写头文件的时候这里要改，包含进去，不然静态检测会检测不到头文件
-    "-std=c++17",
-    "-Wall"
-  ],
   "code-runner.executorMap": {
     "javascript": "node",
     "java": "cd $dir && javac $fileName && java $fileNameWithoutExt",

@@ -315,12 +315,29 @@ void PosixEnv::BackgroundThreadMain() {
     while (background_work_queue.empty()) {
       background_work_cond.wait(backwork);
     }
-    std::function<void()> background_work_function =
+    std::function<void()> backgroundWorkFunction =
         background_work_queue.front();
     background_work_queue.pop();
 
     backwork.unlock();
-    background_work_function();
+    backgroundWorkFunction();
   }
+}
+State SetCurrentFile(
+    PosixEnv* env, const std::string& dbname,
+    uint64_t file_number) {  //将CURRENT文件指向当前的新的manifest文件
+  std::string mainifset = DescriptorFileName(dbname, file_number);
+  std::string_view fileview(mainifset);
+  fileview.remove_prefix(dbname.size() + 1);
+  std::string tmp = TempFileName(dbname, file_number);
+  std::string p(fileview);
+  State s = WriteStringToFile(env, p + "\n", tmp, true);
+  if (s.ok()) {
+    s = env->RenameFile(tmp, CurrentFileName(dbname));
+  }
+  if (!s.ok()) {
+    env->DeleteFile(tmp);
+  }
+  return s;
 }
 }  // namespace yubindb

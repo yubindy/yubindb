@@ -24,6 +24,7 @@ char* Arena::AllocateFallback(size_t bytes) {
 }
 char* Arena::AllocateNewBlock(size_t block_bytes) {
   char* rul = new char[block_bytes];
+  
   blocks.emplace_back(rul);
   memory_usage.fetch_add(block_bytes + sizeof(char*),
                          std::memory_order_relaxed);

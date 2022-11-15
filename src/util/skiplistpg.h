@@ -2,6 +2,7 @@
 #define YUBINDB_SKIPLISTPG_H_
 #include <functional>
 #include <memory.h>
+#include <memory>
 #include <string_view>
 
 #include "arena.h"
@@ -11,7 +12,7 @@ namespace yubindb {
 struct node {
  public:
   node() = default;
-  node(const SkiplistKey& key_) : key(key_.Key()),val(key_.Val()) {}
+  node(const SkiplistKey& key_) {key_.Key(key);key_.Val(*val); }
   node(const InternalKey& key_) : key(key_) {}
   ~node() = default;
 
@@ -22,7 +23,7 @@ struct node {
   // My data here: {int, int} pair.
   
   InternalKey key;
-  std::string val; //value size (varint32) + value std::string
+  std::unique_ptr<std::string> val; //value size (varint32) + value std::string
 };
 
 // Define a comparison function for `my_node`.
@@ -44,7 +45,10 @@ class Skiplist {  // skiplist package
   Skiplist& operator=(const Skiplist&) = delete;
   void Insert(SkiplistKey skiplistkv) ; 
   bool Equal(SkiplistKey& a, SkiplistKey& b) const {
-    return (cmp(a.Key(), b.Key()) == 0);
+    InternalKey a1,b1;
+    a.Key(a1);
+    b.Key(b1);
+    return (cmp(a1,b1) == 0);
   }
   skiplist_node* Seek(const InternalKey& key);
   skiplist_node* SeekToFirst();

@@ -1,13 +1,13 @@
 #ifndef YUBINDB_KEY_H_
 #define YUBINDB_KEY_H_
+#include <string.h>
+
 #include <cstddef>
 #include <cstdint>
-#include <string.h>
 #include <string>
 #include <string_view>
 
 #include "common.h"
-#include "key.h"
 #include "skiplist.h"
 namespace yubindb {
 typedef uint64_t SequenceNum;
@@ -23,7 +23,7 @@ static uint64_t PackSequenceAndType(uint64_t seq, Valuetype t) {
   return (seq << 8) | t;
 }
 static void getsize(const char* ptr, uint32_t& p) {
-    GetVarint32Ptr(ptr, ptr + 5, &p);
+  GetVarint32Ptr(ptr, ptr + 5, &p);
 }
 //    userkey  char[klength]
 //    tag      uint64 ->seq+type
@@ -34,11 +34,15 @@ class InternalKey {
     PutFixed64(&Key, parser(num, type));
   }
   explicit InternalKey(std::string_view Key_) : Key(Key_.data()) {}
+  explicit InternalKey(std::string&& Key_) : Key(Key_) {}
   InternalKey(InternalKey& key_) { Key = key_.Key; }
   InternalKey(const InternalKey& key_) { Key = key_.Key; }
   InternalKey() {}
-  InternalKey(InternalKey&& str) {Key=str.Key;}
-  InternalKey& operator=(const InternalKey& ptr) {Key=ptr.Key; return *this;}
+  InternalKey(InternalKey&& str) { Key = str.Key; }
+  InternalKey& operator=(const InternalKey& ptr) {
+    Key = ptr.Key;
+    return *this;
+  }
   ~InternalKey() = default;
   const std::string_view getview() const { return std::string_view(Key); }
   const std::string& getString() { return Key; }
@@ -47,18 +51,19 @@ class InternalKey {
     Key.assign(s.data(), s.size());
     return !Key.empty();
   }
-  uint64_t Getag() {
-    return DecodeFixed64(Key.data()+Key.size()-8);
-  }
+  uint64_t Getag() { return DecodeFixed64(Key.data() + Key.size() - 8); }
   std::string_view ExtractUserKey() const {
-  assert(Key.size() >= 8);
-  return std::string_view(Key.data(),Key.size() - 8);
+    assert(Key.size() >= 8);
+    return std::string_view(Key.data(), Key.size() - 8);
   }
+
  private:
+ friend class SkiplistKey;
   std::string Key;
 };
 
-inline int cmp(const InternalKey& a_,const InternalKey& b_) {  // inernalkey cmp
+inline int cmp(const InternalKey& a_,
+               const InternalKey& b_) {  // inernalkey cmp
   std::string_view a = a_.getview();
   std::string_view b = b_.getview();
 
@@ -90,20 +95,20 @@ class Lookey {
   }
 
   // Return an internal key (suitable for passing to an internal iterator)
-  std::string_view internal_key() const {
-    return std::string_view(start + sizeof(interlen),
-                            end - start - sizeof(interlen));
+  std::string&& internal_key() const {
+    std::string ptr;
+    ptr.resize(end - start);
+    memcpy(ptr.data(), start, end - start);
+    return std::move(ptr);
   }
-  uint32_t getinterlen() const { return interlen; }
   // Return the user key
   std::string_view key() const {
-    return std::string_view(start + sizeof(interlen),
-                            end - start - sizeof(interlen) - 8);
+    return std::string_view(start, end - start - 8);
   }
 
  private:
-  const char* start;  // all start
-  uint32_t interlen;
+  const char* start;   // all start
+  const char* kstart;  // userkey start
   const char* end;
   char space[200];
 };
@@ -116,26 +121,35 @@ class Lookey {
 //    value    char[vlength]
 class SkiplistKey {  // for skiplist
  public:
-  explicit SkiplistKey(const char* p,size_t len_) : str(p),len(len_) {}
+  explicit SkiplistKey(const char* p) : str(p) {}
   ~SkiplistKey() = default;
-  InternalKey Key() const {
+  // InternalKey&& Key() const {
+  //   uint32_t key_size;
+  //   getsize(str, key_size);
+  //   std::string p;
+  //   p.resize(VarintLength(key_size));
+  //   memcpy(p.data(),str + VarintLength(key_size), key_size);  //TODO '\0'
+  //   return std::move(InternalKey(p));
+  // }
+  void Key(InternalKey& p) const {
     uint32_t key_size;
     getsize(str, key_size);
-    std::string_view p(str + VarintLength(key_size), key_size);  //TODO '\0'
-    return InternalKey(p);
+    p.Key.resize(key_size);
+    memcpy(p.Key.data(), str + VarintLength(key_size), key_size);
   }
-  std::string Val() const {
-    uint32_t key_size;
+  void Getvalsize(uint32_t& val_size){
+   uint32_t key_size;
     getsize(str, key_size);
+    getsize(str + key_size + VarintLength(key_size), val_size);
+  }
+  void Val(std::string& value) const {
+    uint32_t key_size;
     uint32_t val_size;
-    getsize(str + key_size+VarintLength(key_size), val_size);
-    std::string value;
-    value.resize(val_size);
-    memcpy(value.data()) //TODO
-    (
-        str+VarintLength(key_size) + key_size + VarintLength(val_size),
-        val_size);  ////TODO '\0'
-    return value;
+    getsize(str, key_size);
+    getsize(str + key_size + VarintLength(key_size), val_size);
+    memcpy(value.data(),
+           str + VarintLength(key_size) + key_size + VarintLength(val_size),
+           val_size);
   }
   // void getInternalKey(std::string* key) const {
   //   uint32_t key_size;
@@ -159,7 +173,6 @@ class SkiplistKey {  // for skiplist
 
  private:
   const char* str;
-  size_t len;
 };
 }  // namespace yubindb
 #endif
