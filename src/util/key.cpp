@@ -19,7 +19,6 @@ Lookey::Lookey(std::string_view key_, SequenceNum seq_) { //ISerror should fix b
     str = new char[needed];
   }
   start = str;
-  start = str;
   str = EncodeVarint32(str, usize + 8);
   kstart = str;
   memcpy(str, key_.data(), usize);

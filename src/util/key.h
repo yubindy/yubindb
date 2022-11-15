@@ -4,8 +4,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "common.h"
 #include "skiplist.h"
@@ -34,7 +36,10 @@ class InternalKey {
     PutFixed64(&Key, parser(num, type));
   }
   explicit InternalKey(std::string_view Key_) : Key(Key_.data()) {}
-  explicit InternalKey(std::string&& Key_) : Key(Key_) {}
+  explicit InternalKey( std::pair<const char*, const char*> pairs) {
+    Key.resize(pairs.second-pairs.first);
+    memcpy(Key.data(),pairs.first,pairs.second-pairs.first);
+  }
   InternalKey(InternalKey& key_) { Key = key_.Key; }
   InternalKey(const InternalKey& key_) { Key = key_.Key; }
   InternalKey() {}
@@ -58,7 +63,7 @@ class InternalKey {
   }
 
  private:
- friend class SkiplistKey;
+  friend class SkiplistKey;
   std::string Key;
 };
 
@@ -91,19 +96,23 @@ class Lookey {
 
   ~Lookey() = default;
   std::string_view Internalkey() const {
-    return std::string_view(start, end - start);
+    return std::string_view(kstart, end - kstart);
   }
 
   // Return an internal key (suitable for passing to an internal iterator)
-  std::string&& internal_key() const {
-    std::string ptr;
-    ptr.resize(end - start);
-    memcpy(ptr.data(), start, end - start);
-    return std::move(ptr);
+  // std::string  const {
+  //   std::string ptr;
+  //   ptr.resize(end - kstart);
+  //   memcpy(ptr.data(), kstart, end - kstart);
+  //   return ptr;
+  // }
+  std::pair<const char*, const char*> internal_key() const {
+    std::pair<const char*, const char*> spt(kstart, end);
+    return spt;
   }
   // Return the user key
   std::string_view key() const {
-    return std::string_view(start, end - start - 8);
+    return std::string_view(kstart, end - kstart - 8);
   }
 
  private:
@@ -137,16 +146,12 @@ class SkiplistKey {  // for skiplist
     p.Key.resize(key_size);
     memcpy(p.Key.data(), str + VarintLength(key_size), key_size);
   }
-  void Getvalsize(uint32_t& val_size){
-   uint32_t key_size;
-    getsize(str, key_size);
-    getsize(str + key_size + VarintLength(key_size), val_size);
-  }
   void Val(std::string& value) const {
     uint32_t key_size;
     uint32_t val_size;
     getsize(str, key_size);
     getsize(str + key_size + VarintLength(key_size), val_size);
+    value.resize(val_size);
     memcpy(value.data(),
            str + VarintLength(key_size) + key_size + VarintLength(val_size),
            val_size);

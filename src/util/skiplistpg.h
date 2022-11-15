@@ -12,7 +12,7 @@ namespace yubindb {
 struct node {
  public:
   node() = default;
-  node(const SkiplistKey& key_) {key_.Key(key);key_.Val(*val); }
+  node(const SkiplistKey& key_) {key_.Key(key);key_.Val(val); }
   node(const InternalKey& key_) : key(key_) {}
   ~node() = default;
 
@@ -23,7 +23,7 @@ struct node {
   // My data here: {int, int} pair.
   
   InternalKey key;
-  std::unique_ptr<std::string> val; //value size (varint32) + value std::string
+  std::string val; //value size (varint32) + value std::string
 };
 
 // Define a comparison function for `my_node`.
@@ -59,6 +59,7 @@ class Skiplist {  // skiplist package
  private:
   skiplist_raw table;
   std::shared_ptr<Arena> arena;  // for new and delete
+  std::vector<std::unique_ptr<node>> nodes;
 };
 }  // namespace yubindb
 #endif

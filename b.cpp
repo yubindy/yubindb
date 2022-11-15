@@ -1,14 +1,26 @@
 #include<stdio.h>
 #include<string.h>
+#include <algorithm>
 #include <memory>
 #include<string>
 #include<iostream>
+struct p{
+  p()=default;
+  ~p()=default;
+  int a;
+  std::string b;
+};
 int main() {
   
-  std::unique_ptr<std::string>p;
-  p=std::make_unique<std::string>();
-  ::memcpy(p->data(),"1\0 ab",5);
-  std::cout<<p->data() <<std::endl;
-  printf("%s",p->data());
-  return 0;
+  std::string a,b;
+  a="1234";
+  std::string c=std::move(a);
+  std::cout<< c<<std::endl;
 }
+// int main(){
+//   std::string* p;
+//   p=new std::string();
+//   p->resize(5);
+//   ::memcpy(p->data(),"1\0456",5);
+//   std::cout<< 
+// }

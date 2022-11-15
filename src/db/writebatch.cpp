@@ -34,7 +34,7 @@ void WriteBatch::SetSequence(SequenceNum seq) {
 State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
   std::string_view ptr(mate);
   SequenceNum now_seq = Sequence();
-  int now_cnt = Count();
+  int now_cnt=0;
   if (ptr.size() < Headsize) {
     spdlog::error("malformed WriteBatch (too small)");
   }
@@ -56,6 +56,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
           spdlog::error("bad WriteBatch Put");
           return State::Corruption("bad WriteBatch Put");
         }
+        break;
       case kTypeDeletion:
         if (GetLengthPrefixedview(&ptr, &key)) {
           memtable->Add(now_seq, kTypeValue, key, std::string_view());

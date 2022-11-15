@@ -204,6 +204,7 @@ State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
   } else {
     snapshot = versions_->LastSequence();
   }
+  // 增加引用计数，避免在读取过程中被后台线程进行 Compaction 时“垃圾回收”了。
   std::shared_ptr<Memtable> mem = mem_;
   std::shared_ptr<Memtable> imm = imm_;
   std::shared_ptr<Version> current = versions_->Current();

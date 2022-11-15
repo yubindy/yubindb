@@ -32,8 +32,8 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
     node* found = _get_entry(t, node, snode);
     if ((found->key.Getag() & 0xf) == kTypeValue) {
       uint32_t val_size;
-      getsize(found->val->data(),val_size);
-      value->assign(*(found->val),VarintLength(val_size),val_size);
+      getsize(found->val.data(),val_size);
+      value->assign(found->val,VarintLength(val_size),val_size);
       return true;
     } else if ((found->key.Getag() & 0xf) == kTypeDeletion) {
       return false;

@@ -1,16 +1,15 @@
 #include "skiplistpg.h"
+#include <memory>
 
 #include "src/util/key.h"
 namespace yubindb {
 void Skiplist::Insert(SkiplistKey skiplistkv) {
-  node* p = (node*)arena->AllocAligned(sizeof(node));
+  std::unique_ptr<node> p = std::make_unique<node>();
   skiplist_init_node(&p->snode);
   skiplistkv.Key(p->key);
-  uint32_t size;
-  skiplistkv.Getvalsize(size);
-  p->val=(std::string*)arena->AllocAligned(size);
-  skiplistkv.Val(*p->val);
+  skiplistkv.Val(p->val);
   skiplist_insert(&table, &p->snode);
+  nodes.emplace_back(std::move(p));
 }
 bool Skiplist::GreaterEqual(SkiplistKey& a, SkiplistKey& b) {
   node p(a);
