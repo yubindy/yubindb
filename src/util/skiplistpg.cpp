@@ -1,6 +1,5 @@
 #include "skiplistpg.h"
 #include <memory>
-
 #include "src/util/key.h"
 namespace yubindb {
 void Skiplist::Insert(SkiplistKey skiplistkv) {
@@ -32,11 +31,18 @@ skiplist_node* Skiplist::Seek(const InternalKey& key) {
   }
   return t;
 }
-skiplist_node* Skiplist::SeekToFirst() { return skiplist_begin(&table); }
-skiplist_node* Skiplist::SeekToLast() { return skiplist_end(&table); }
 bool Skiplist::KeyIsAfterNode(SkiplistKey& key, node* n) const {
   InternalKey p;
   key.Key(p);
   return (n != nullptr) && (cmp(n->key, p) < 0);
+}
+State Skiplist::Flushlevel0(FileMate& meta){
+  node* beg=SeekToFirst();
+  meta.smallest.DecodeFrom(beg->key.getview());
+  node* end=SeekToFirst();
+  meta.largest.DecodeFrom(end->key.getview());
+  while(Valid(beg)){
+    
+  }
 }
 }  // namespace yubindb

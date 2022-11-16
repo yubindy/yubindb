@@ -2,14 +2,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include <functional>
+#include <string>
+#include <string_view>
 
 int main() {
-  char* heap_buf = (char*)malloc(32 * sizeof(char));
-  memcpy(heap_buf + 30, "overflow",
-         8);  //在heap_buf的第30个字节开始，拷贝8个字符
-
-  free(heap_buf);
-
+  std::string p("12345");
+  int s=100;
+  auto sp = std::hash<int>()(s);
+  printf("%d", sp);
   return 0;
 }

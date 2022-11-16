@@ -1,12 +1,13 @@
 #ifndef YUBINDB_DB_H_
 #define YUBINDB_DB_H_
+#include <memory.h>
+#include <stdio.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
-#include <memory.h>
 #include <mutex>
 #include <set>
-#include <stdio.h>
 #include <string>
 #include <string_view>
 
@@ -82,6 +83,11 @@ class DBImpl : public DB {
   void ReleaseSnapshot(std::shared_ptr<const Snapshot>& snapshot);
   void BackgroundCall();
   void BackgroundCompaction();
+  void CompactMemTable();
+  State WriteLevel0Table(std::shared_ptr<Memtable>& mem, VersionEdit& edit,
+                        std::shared_ptr<Version>& base);
+  State BuildTable(std::shared_ptr<Memtable>& mem,FileMate& meta);
+
 
   const std::string dbname;
   const Options* opts;

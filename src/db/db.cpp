@@ -2,6 +2,7 @@
 
 #include <memory.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -283,10 +284,22 @@ State DBImpl::MakeRoomForwrite(bool force) {
     } else {
       //到新的memtable并触发旧的进行compaction
       uint64_t new_log_number = versions_->NewFileNumber();
-      std::unique_ptr<WritableFile> lfile=nullptr;
+      std::unique_ptr<WritableFile> lfile = nullptr;
       s = env->NewWritableFile(LogFileName(dbname, new_log_number),
-                                lfile);  //生成新的log文件
-      
+                               lfile);  //生成新的log文件
+      if (!s.ok()) {
+        // Avoid chewing through file number space in a tight loop.
+        // versions_->ReuseFileNumber(new_log_number); TODO
+        break;
+      }
+      logfile.reset(lfile.release());
+      logwrite = std::make_unique<walWriter>(logfile);
+      logfilenum = new_log_number;
+      imm_ = mem_;
+      has_imm_.store(true, std::memory_order_release);
+      mem_ = std::make_shared<Memtable>();
+      force = false;
+      MaybeCompaction();
     }
   }
   return State::Ok();
@@ -343,10 +356,37 @@ void DBImpl::BackgroundCall() {
   MaybeCompaction();
   background_work_finished_signal.notify_all();
 }
-void DBImpl::BackgroundCompaction() {  // TODO doing compaction
+void DBImpl::BackgroundCompaction() {  // doing compaction
   if (imm_ != nullptr) {
-    // CompactMemTable();
+    CompactMemTable();
     return;
   }
+}
+void DBImpl::CompactMemTable() {
+  assert(imm != nullptr);
+  VersionEdit edit;
+  std::shared_ptr<Version> base = versions_->Current();
+  State s = WriteLevel0Table(imm_, edit, base);
+}
+State DBImpl::WriteLevel0Table(std::shared_ptr<Memtable>& mem,
+                               VersionEdit& edit,
+                               std::shared_ptr<Version>& base) {
+  FileMate meta;
+  meta.num = versions_->NewFileNumber();
+  pending_outputs_.insert(meta.num);
+  spdlog::info("Level-0 table filenumber{}: started",meta.num);
+  State s;
+  {
+    mutex.unlock();
+    s = BuildTable(mem,meta);
+    mutex.lock();
+  }
+
+
+}
+State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem,FileMate& meta){
+  State s;
+  meta.file_size = 0;
+  mem->Flushlevel0fromskip(meta);
 }
 }  // namespace yubindb

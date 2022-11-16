@@ -50,7 +50,7 @@ class ShareCache {
   std::mutex mutex;
   int last_id;
 };
-class TableCache {
+class TableCache { //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
