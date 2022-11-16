@@ -4,10 +4,9 @@
 #include <iostream>
 #include <string>
 
-#include "../util/common.h"
-#include "db.h"
-#include "loginit.h"
-#include "writebatch.h"
+#include "src/db/db.h"
+#include "src/db/writebatch.h"
+#include "src/util/common.h"
 #define SPDLOG_ACTIVE_LEVEL \
   SPDLOG_LEVEL_TRACE  //必须定义这个宏,才能输出文件名和行号
 int main() {
@@ -27,9 +26,9 @@ int main() {
     s = db->Put(yubindb::WriteOptions(), key, value);
     spdlog::info("K: {} V:{}", key, value);
   }
-  s = db->Put(yubindb::WriteOptions(),"key0","issb");
+  s = db->Put(yubindb::WriteOptions(), "key0", "issb");
   assert(s.ok());
-  std::string key1="key";
+  std::string key1 = "key";
   for (int i = 0; i < 10; i++) {
     key1.append(std::to_string(i));
     s = db->Get(yubindb::ReadOptions(), key1, &value);

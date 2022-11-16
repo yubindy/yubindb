@@ -374,19 +374,23 @@ State DBImpl::WriteLevel0Table(std::shared_ptr<Memtable>& mem,
   FileMate meta;
   meta.num = versions_->NewFileNumber();
   pending_outputs_.insert(meta.num);
-  spdlog::info("Level-0 table filenumber{}: started",meta.num);
+  spdlog::info("Level-0 table filenumber{}: started", meta.num);
   State s;
   {
     mutex.unlock();
-    s = BuildTable(mem,meta);
+    s = BuildTable(mem, meta);
     mutex.lock();
   }
-
-
 }
-State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem,FileMate& meta){
+State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   State s;
   meta.file_size = 0;
-  mem->Flushlevel0fromskip(meta);
+  std::string fname = TableFileName(dbname, meta.num);
+  std::shared_ptr<WritableFile> file;
+  s = env->NewWritableFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  s = mem->Flushlevel0fromskip(meta,file);
 }
 }  // namespace yubindb

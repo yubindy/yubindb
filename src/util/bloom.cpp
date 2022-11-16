@@ -5,17 +5,19 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 
 namespace yubindb {
-static uint32_t BloomHash(std::string_view& key) {
-  return std::hash<std::string_view>(key);
+static uint32_t BloomHash(const std::string_view& key) {
+  std::hash<std::string_view> h;
+  return h(key);
 }
 BloomFilter::BloomFilter(int bits) : bits_key(bits) {  // use for fliter block
   hash_size = static_cast<size_t>(bits * 0.69);  // 0.69 =~ ln(2),limit hash
   if (hash_size < 1) hash_size = 1;
   if (hash_size > 30) hash_size = 30;
 }
-void BloomFilter::CreateFiler(std::string_view& key, int n,
+void BloomFilter::CreateFiler(std::string_view* key, int n,
                               std::string* filter) const {
   size_t bits = bits_key * n;
   if (bits < 64) bits = 64;
@@ -26,7 +28,7 @@ void BloomFilter::CreateFiler(std::string_view& key, int n,
   filter->resize(init_size + bytes);
   filter->push_back(static_cast<char>(hash_size));
   char* array = &(*filter)[init_size];
-  for (int i = 0; i < key.size(); i++) {
+  for (int i = 0; i < n; i++) {
     uint32_t h = BloomHash(key[i]);
     const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
     for (size_t j = 0; j < hash_size; j++) {

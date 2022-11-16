@@ -2,10 +2,12 @@
 #define YUBINDB_MEMTABLE_H_
 #include <memory.h>
 
+#include <memory>
 #include <string_view>
 
 #include "../util/arena.h"
 #include "../util/cache.h"
+#include "filterblock.h"
 #include "../util/key.h"
 #include "../util/skiplistpg.h"
 #include "block.h"
@@ -25,7 +27,7 @@ class Memtable {
   void Add(SequenceNum seq, Valuetype type, std::string_view key,
            std::string_view value);
   bool Get(const Lookey& key, std::string* value, State* s);
-  void Flushlevel0fromskip(FileMate& meta);
+  State Flushlevel0fromskip(FileMate& meta,std::shared_ptr<WritableFile>& wf);
 
  private:
   friend class Tablebuilder;
@@ -46,7 +48,7 @@ class Memtable {
         last_key;  //上一个插入的key值，新插入的key必须比它大，保证.sst文件中的key是从小到大排列的
     int64_t num_entries;  //.sst文件中存储的所有记录总数。
     bool closed;          // Either Finish() or Abandon() has been called.
-    FilterBlockBuilder* filter_block;
+    std::unique_ptr<FilterBlockbuilder> filter_block; //将filter写入 block
 
     bool pending_index_entry;  //当一个Data Block被写入到.sst文件时，为true
     BlockHandle pending_handle;  // Handle to add to index block

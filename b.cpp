@@ -1,16 +1,15 @@
-
-
-#include <stdio.h>
-#include <stdlib.h>
-
+#include <iostream>
 #include <functional>
 #include <string>
 #include <string_view>
+#include <string_view>
 
-int main() {
-  std::string p("12345");
-  int s=100;
-  auto sp = std::hash<int>()(s);
-  printf("%d", sp);
-  return 0;
+int main(int argc, char *argv[])
+{
+	std::hash<std::string_view> h;
+	std::string_view p("12344");
+	uint64_t n = h(p[2]);
+	std::cout << n << std::endl;
+
+	return 0;
 }

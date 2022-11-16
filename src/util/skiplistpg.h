@@ -64,7 +64,7 @@ class Skiplist {  // skiplist package
     return _get_entry(t, node, snode);
   }
   node* Next(node* ptr) {
-    skiplist_node* t = skiplist_next(&table,&ptr->snode);
+    skiplist_node* t = skiplist_next(&table, &ptr->snode);
     return _get_entry(t, node, snode);
   }
   bool Valid(node* ptr) { return skiplist_is_valid_node(&ptr->snode); }
