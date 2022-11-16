@@ -1,6 +1,9 @@
 #include "memtable.h"
 
+#include <memory>
+
 #include "src/util/common.h"
+#include "src/util/skiplistpg.h"
 namespace yubindb {
 Memtable::Memtable()
     : arena(std::make_shared<Arena>()),
@@ -47,7 +50,15 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
   }
 }
 State Memtable::Flushlevel0fromskip(FileMate& meta,
-                                    std::shared_ptr<WritableFile>& wf) {
-      
-                                    }
+                                    std::unique_ptr<Tablebuilder>& builder) {
+  node *p=table->SeekToFirst();
+  meta.smallest=p->key;
+  for (;table->Valid(p);p=table->Next(p)) {
+    builder->Add(p->key,p->val);
+  }
+  while(!table->Valid(p)){
+  p=table->Prev(p);
+  }
+  meta.largest=p->key;
+}
 }  // namespace yubindb

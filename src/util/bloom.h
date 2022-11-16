@@ -17,10 +17,9 @@ class BloomFilter {
   bool KeyMayMatch(std::string_view& key, std::string_view& filter) const;
 
  private:
-  char bits_key;
-  int hash_size;
+  size_t bits_key;
+  size_t hash_size;
 };
-std::shared_ptr<BloomFilter> NewBloomFilter(int bits);
 }  // namespace yubindb
 #endif
 

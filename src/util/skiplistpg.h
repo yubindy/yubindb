@@ -67,6 +67,10 @@ class Skiplist {  // skiplist package
     skiplist_node* t = skiplist_next(&table, &ptr->snode);
     return _get_entry(t, node, snode);
   }
+  node* Prev(node* ptr) {
+    skiplist_node* t = skiplist_prev(&table, &ptr->snode);
+    return _get_entry(t, node, snode);
+  }
   bool Valid(node* ptr) { return skiplist_is_valid_node(&ptr->snode); }
   skiplist_node* Seek(const InternalKey& key);
   State Flushlevel0(FileMate& meta);

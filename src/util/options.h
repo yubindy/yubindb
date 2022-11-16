@@ -8,6 +8,13 @@ struct Options {
   // Create an Options object with default values for all fields.
   Options() = default;
   ~Options() = default;
+  Options(const Options& opt)
+      : paranoid_checks(opt.paranoid_checks),
+        max_open_files(opt.max_open_files),
+        block_size(opt.block_size),
+        block_restart_interval(opt.block_restart_interval),
+        write_buffer_size(opt.write_buffer_size),
+        max_file_size(opt.max_file_size),reuse_logs(opt.reuse_logs) {}
   bool paranoid_checks = false;
 
   int max_open_files = 1000;
@@ -22,8 +29,6 @@ struct Options {
   uint32_t max_file_size = 2 * 1024 * 1024;
 
   bool reuse_logs = false;
-
-  PosixEnv env;
 };
 
 struct WriteOptions {

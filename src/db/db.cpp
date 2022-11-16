@@ -5,10 +5,10 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-
 #include "../util/filename.h"
 #include "snapshot.h"
 #include "spdlog/spdlog.h"
+#include "src/db/memtable.h"
 #include "src/util/common.h"
 #include "src/util/env.h"
 #include "src/util/options.h"
@@ -391,6 +391,8 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   if (!s.ok()) {
     return s;
   }
-  s = mem->Flushlevel0fromskip(meta,file);
+  std::unique_ptr<Tablebuilder> builder =
+      std::make_unique<Tablebuilder>(opts, file);
+  s = mem->Flushlevel0fromskip(meta, builder);
 }
 }  // namespace yubindb
