@@ -3,6 +3,8 @@
 #include <crc32c/crc32c.h>
 
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string_view>
 
@@ -11,6 +13,33 @@
 #include "src/util/options.h"
 #include "src/util/skiplistpg.h"
 namespace yubindb {
+void Footer::EncodeTo(std::string* dst) const {
+  metaindex_handle_.EncodeTo(dst);
+  index_handle_.EncodeTo(dst);
+  dst->resize(2 * BlockHandle::kMaxEncodedLength);
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber >> 32));
+}
+State Footer::DecodeFrom(std::string_view* input) {
+  const char* magic_ptr = input->data() + kEncodedLength - 8;
+  const uint32_t magic_lo = DecodeFixed32(magic_ptr);
+  const uint32_t magic_hi = DecodeFixed32(magic_ptr + 4);
+  const uint64_t magic = ((static_cast<uint64_t>(magic_hi) << 32) |
+                          (static_cast<uint64_t>(magic_lo)));
+  if (magic != kTableMagicNumber) {
+    spdlog::warn("not an sstable (bad magic number");
+    return State::Corruption();
+  }
+  State rul = metaindex_handle_.DecodeFrom(input);
+  if (rul.ok()) {
+    rul = index_handle_.DecodeFrom(input);
+  }
+  if (rul.ok()) {
+    const char* end = magic_ptr + 8;
+    *input = std::string_view(end, input->data() + input->size() - end);
+  }
+  return rul;
+}
 Memtable::Memtable()
     : arena(std::make_shared<Arena>()),
       table(std::make_unique<Skiplist>(arena)) {}
@@ -18,7 +47,6 @@ void Memtable::FindShortestSeparator(std::string* start,
                                      std::string_view limit) {}
 void Memtable::FindShortSuccessor(std::string* key) {}
 uint32_t Memtable::ApproximateMemoryUsage() { return table->Getsize(); }
-// Iterator* NewIterator(); //TODO?
 void Memtable::Add(SequenceNum seq, Valuetype type, std::string_view key,
                    std::string_view value) {
   uint32_t key_size = key.size();
@@ -98,8 +126,47 @@ void Tablebuilder::Flush() {
     filter_block->StartBlock(offset);
   }
 }
+State Tablebuilder::Finish() {
+  Flush();
+  closed = true;
+  BlockHandle filter_block_handle, metaindex_block_handle, index_block_handle;
+  if (state.ok() && filter_block != nullptr) {  // Write filter block
+    WriteRawBlock(filter_block->Finish(), kNoCompression, &filter_block_handle);
+  }
+  if (state.ok() && filter_block != nullptr) {  // Write metaindex block
+    Blockbuilder meta_index_block(&options);
+    if (filter_block != nullptr) {
+      std::string key = "filter.bloom";
+      std::string handle_encoding;
+      filter_block_handle.EncodeTo(&handle_encoding);
+      meta_index_block.Add(key, handle_encoding);
+    }
+    WriteBlock(&meta_index_block, &metaindex_block_handle);  // meta_index_block
+  }
+  if (state.ok()) {
+    if (pending_index_entry) {
+      std::string handle_encoding;
+      pending_handle.EncodeTo(&handle_encoding);
+      index_block.Add(last_key, handle_encoding);
+      pending_index_entry = false;
+    }
+    WriteBlock(&index_block, &index_block_handle);
+  }
+  if (state.ok()) {
+    Footer footer;
+    footer.set_metaindex_handle(metaindex_block_handle);
+    footer.set_index_handle(index_block_handle);
+    std::string footer_encoding;
+    footer.EncodeTo(&footer_encoding);
+    state = file->Append(footer_encoding);
+    if (state.ok()) {
+      offset += footer_encoding.size();
+    }
+  }
+  return state;
+}
 void Tablebuilder::WriteBlock(Blockbuilder* block, BlockHandle* handle) {
-  std::string_view raw = block->Finish();
+  std::string_view raw = block->Finish();  // TODO
   CompressionType type = options.compression;
 
   std::string_view block_;

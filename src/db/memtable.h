@@ -11,6 +11,7 @@
 #include "../util/skiplistpg.h"
 #include "block.h"
 #include "filterblock.h"
+#include "src/util/common.h"
 namespace yubindb {
 class Tablebuilder;
 class Memtable {
@@ -53,6 +54,7 @@ class Tablebuilder {
   }
   void Add(const InternalKey& key, const std::string& val);
   void Flush();
+  State Finish();
   void WriteBlock(Blockbuilder* block, BlockHandle* handle);
   void WriteRawBlock(const std::string_view& block_contents,
                      CompressionType type, BlockHandle* handle);
@@ -76,6 +78,21 @@ class Tablebuilder {
 
   std::string compressed_output;  // Data Block的block_data字段压缩后的结果
 };
+class Footer {
+  Footer() = default;
+  enum { kEncodedLength = 2 * BlockHandle::kMaxEncodedLength + 8 };
+  const BlockHandle& metaindex_handle() const { return metaindex_handle_; }
+  void set_metaindex_handle(const BlockHandle& h) { metaindex_handle_ = h; }
 
+  const BlockHandle& index_handle() const { return index_handle_; }
+  void set_index_handle(const BlockHandle& h) { index_handle_ = h; }
+
+  void EncodeTo(std::string* dst) const;
+  State DecodeFrom(std::string_view* input);
+
+ private:
+  BlockHandle metaindex_handle_;
+  BlockHandle index_handle_;
+};
 }  // namespace yubindb
 #endif
