@@ -38,7 +38,7 @@ void BloomFilter::CreateFiler(std::string_view* key, int n,
     }
   }
 }
-bool BloomFilter::KeyMayMatch(std::string_view& key,
+bool BloomFilter::KeyMayMatch(const std::string_view& key,
                               std::string_view& filter) const {
   const size_t len = filter.size();
   if (len < 2) {

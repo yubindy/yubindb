@@ -5,9 +5,12 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+
+#include "../util/bloom.h"
 #include "../util/filename.h"
 #include "snapshot.h"
 #include "spdlog/spdlog.h"
+#include "src/db/filterblock.h"
 #include "src/db/memtable.h"
 #include "src/util/common.h"
 #include "src/util/env.h"
@@ -62,7 +65,11 @@ DBImpl::DBImpl(const Options* opt, const std::string& dbname)
       logwrite(nullptr),
       batch(std::make_shared<WriteBatch>()),
       background_compaction_(false),
-      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache)) {}
+      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache)) {
+  if (!bloomfit) {
+    bloomfit = std::make_unique<BloomFilter>(10);
+  }
+}
 DBImpl::~DBImpl() {
   std::unique_lock<std::mutex> lk(mutex);
   shutting_down_.store(true, std::memory_order_release);
