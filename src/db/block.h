@@ -5,6 +5,9 @@
 #include "../util/options.h"
 #include "src/util/common.h"
 namespace yubindb {
+static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;
+// 1-byte type + 32-bit crc
+static const size_t kBlockBackSize = 5;
 class BlockHandle {
  public:
   enum { kMaxEncodedLength = 10 + 10 };

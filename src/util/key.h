@@ -36,9 +36,9 @@ class InternalKey {
     PutFixed64(&Key, parser(num, type));
   }
   explicit InternalKey(std::string_view Key_) : Key(Key_.data()) {}
-  explicit InternalKey( std::pair<const char*, const char*> pairs) {
-    Key.resize(pairs.second-pairs.first);
-    memcpy(Key.data(),pairs.first,pairs.second-pairs.first);
+  explicit InternalKey(std::pair<const char*, const char*> pairs) {
+    Key.resize(pairs.second - pairs.first);
+    memcpy(Key.data(), pairs.first, pairs.second - pairs.first);
   }
   InternalKey(InternalKey& key_) { Key = key_.Key; }
   InternalKey(const InternalKey& key_) { Key = key_.Key; }
@@ -61,18 +61,35 @@ class InternalKey {
     assert(Key.size() >= 8);
     return std::string_view(Key.data(), Key.size() - 8);
   }
-  size_t size() {return Key.size();}
+  size_t size() { return Key.size(); }
+
  private:
   friend class SkiplistKey;
   std::string Key;
 };
 
-inline int cmp(const InternalKey& a_,
-               const InternalKey& b_) {  // inernalkey cmp
+static inline int cmp(const InternalKey& a_,
+                      const InternalKey& b_) {  // inernalkey cmp
   std::string_view a = a_.getview();
   std::string_view b = b_.getview();
 
   int r = a_.ExtractUserKey().compare(b_.ExtractUserKey());
+  if (r == 0) {
+    const uint64_t anum = DecodeFixed64(a.data() + a.size() - 8);
+    const uint64_t bnum = DecodeFixed64(b.data() + b.size() - 8);
+    if (anum > bnum) {
+      r = -1;
+    } else if (anum < bnum) {
+      r = +1;
+    }
+  }
+  return r;
+}
+static inline int cmp(const std::string_view& a,
+                      const std::string_view& b) {  // inernalkey cmp
+
+  int r = std::string_view(a.data(), a.size() - 8)
+              .compare(std::string_view(b.data(), b.size() - 8));
   if (r == 0) {
     const uint64_t anum = DecodeFixed64(a.data() + a.size() - 8);
     const uint64_t bnum = DecodeFixed64(b.data() + b.size() - 8);
@@ -152,9 +169,8 @@ class SkiplistKey {  // for skiplist
     getsize(str, key_size);
     getsize(str + key_size + VarintLength(key_size), val_size);
     value.resize(val_size);
-    memcpy(value.data(),
-           str + VarintLength(key_size) + key_size,
-           val_size+VarintLength(val_size));
+    memcpy(value.data(), str + VarintLength(key_size) + key_size,
+           val_size + VarintLength(val_size));
   }
   // void getInternalKey(std::string* key) const {
   //   uint32_t key_size;

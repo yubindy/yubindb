@@ -51,9 +51,13 @@ class Tablebuilder {
         pending_index_entry(false) {
     indexoptions.block_restart_interval = 1;
   }
-  void Add(const InternalKey& key,const std::string& val){
+  void Add(const InternalKey& key, const std::string& val);
+  void Flush();
+  void WriteBlock(Blockbuilder* block, BlockHandle* handle);
+  void WriteRawBlock(const std::string_view& block_contents,
+                     CompressionType type, BlockHandle* handle);
+  int64_t Size() { return offset; }
 
-  }
  private:
   Options options;
   Options indexoptions;
@@ -62,11 +66,10 @@ class Tablebuilder {
   State state;
   Blockbuilder data_block;
   Blockbuilder index_block;
-  std::string
-      last_key;  //上一个插入的key值，新插入的key必须比它大，保证.sst文件中的key是从小到大排列的
+  std::string last_key;
   int64_t num_entries;  //.sst文件中存储的所有记录总数。
-  bool closed;          // Either Finish() or Abandon() has been called.
-  std::unique_ptr<FilterBlockbuilder> filter_block;  //将filter写入 block
+  bool closed;
+  std::unique_ptr<FilterBlockbuilder> filter_block;
 
   bool pending_index_entry;  //当一个Data Block被写入到.sst文件时，为true
   BlockHandle pending_handle;  // Handle to add to index block

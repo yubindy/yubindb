@@ -45,7 +45,7 @@ void Blockbuilder::Add(std::string_view key, std::string_view value) {
   assert(std::string_view(last_key) == key);
   entrynum++;
 }
-std::string_view Blockbuilder::Finish(){
+std::string_view Blockbuilder::Finish(){ //write restart piont
     for(size_t i=0;i<restarts.size();i++){
         PutFixed32(&buffer,restarts[i]);
     }

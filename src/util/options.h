@@ -4,6 +4,7 @@
 namespace yubindb {
 class Snapshot;
 const static int kNumLevels = 7;
+enum CompressionType { kNoCompression = 0x0, kSnappyCompression = 0x1 };
 struct Options {
   // Create an Options object with default values for all fields.
   Options() = default;
@@ -14,7 +15,9 @@ struct Options {
         block_size(opt.block_size),
         block_restart_interval(opt.block_restart_interval),
         write_buffer_size(opt.write_buffer_size),
-        max_file_size(opt.max_file_size),reuse_logs(opt.reuse_logs) {}
+        max_file_size(opt.max_file_size),
+        reuse_logs(opt.reuse_logs),
+        compression(kSnappyCompression) {}
   bool paranoid_checks = false;
 
   int max_open_files = 1000;
@@ -29,6 +32,7 @@ struct Options {
   uint32_t max_file_size = 2 * 1024 * 1024;
 
   bool reuse_logs = false;
+  CompressionType compression = kSnappyCompression;
 };
 
 struct WriteOptions {
