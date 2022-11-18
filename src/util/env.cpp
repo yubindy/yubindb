@@ -201,7 +201,7 @@ State PosixEnv::GetChildren(const std::string& directory_path,
   result->clear();
   ::DIR* dir = ::opendir(directory_path.c_str());
   if (dir == nullptr) {
-    spdlog::error("error delterdir: dirname: {} err: {}", directory_path,
+    spdlog::error("error opendir: dirname: {} err: {}", directory_path,
                   strerror(errno));
     return State::IoError();
   }

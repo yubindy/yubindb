@@ -3,8 +3,10 @@
 #include <memory.h>
 
 #include <atomic>
+#include <cstddef>
 #include <memory>
 #include <mutex>
+#include <string_view>
 
 #include "../util/bloom.h"
 #include "../util/filename.h"
@@ -333,8 +335,12 @@ void DBImpl::DeleteObsoleteFiles() {  // delete outtime file
   env->GetChildren(dbname, &filenames);
 
   mutex.unlock();
+  uint64_t num;
+  FileType type;
   for (uint32_t i = 0; i < filenames.size(); i++) {
     // TODO 删除过时的文件，思考添加kv分离的gc
+    if (ParsefileName(filenames[i], &num, &type))
+      ;
   }
 }
 std::shared_ptr<const Snapshot> DBImpl::GetSnapshot() {
@@ -374,6 +380,23 @@ void DBImpl::CompactMemTable() {
   VersionEdit edit;
   std::shared_ptr<Version> base = versions_->Current();
   State s = WriteLevel0Table(imm_, edit, base);
+
+  if (s.ok() && shutting_down_.load(std::memory_order_acquire)) {
+    spdlog::info("Deleting DB during memtable compaction");
+    s = State::IoError();
+  }
+  if (s.ok()) {
+    edit.SetLogNumber(logfilenum);
+    s = versions_->LogAndApply(&edit, &mutex);
+  }
+
+  if (s.ok()) {
+    imm_ = nullptr;
+    has_imm_.store(false, std::memory_order_release);
+    DeleteObsoleteFiles();
+  } else {
+    spdlog::error("CompactMemTable is error in {}", logfilenum);
+  }
 }
 State DBImpl::WriteLevel0Table(std::shared_ptr<Memtable>& mem,
                                VersionEdit& edit,
@@ -388,6 +411,13 @@ State DBImpl::WriteLevel0Table(std::shared_ptr<Memtable>& mem,
     s = BuildTable(mem, meta);
     mutex.lock();
   }
+  spdlog::info("Level 0 table {} byytes {}", meta.num, meta.file_size);
+  pending_outputs_.erase(meta.num);
+  int level = 0;
+  if (s.ok() && meta.file_size > 0) {
+    edit.AddFile(0, meta.num, meta.file_size, meta.smallest, meta.largest);
+  }
+  return s;
 }
 State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   State s;
@@ -401,5 +431,19 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   std::unique_ptr<Tablebuilder> builder =
       std::make_unique<Tablebuilder>(opts, file);
   s = mem->Flushlevel0fromskip(meta, builder);
+  if (s.ok()) {
+    meta.file_size = builder->Size();
+  }
+  if (s.ok()) {
+    s = file->Sync();
+  }
+  if (s.ok()) {
+    s = file->Close();
+  }
+  if (s.ok() && meta.file_size > 0) {
+  } else {
+    env->DeleteFile(fname);
+  }
+  return s;
 }
 }  // namespace yubindb

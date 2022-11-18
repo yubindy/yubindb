@@ -94,6 +94,9 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
     p = table->Prev(p);
   }
   meta.largest = p->key;
+  State s = builder->Finish();
+  return s;
+
 }
 void Tablebuilder::Add(const InternalKey& key, const std::string& val) {
   assert(!closed);

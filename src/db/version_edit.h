@@ -4,6 +4,7 @@
 #include <set>
 #include <string_view>
 #include "../util/key.h"
+#include "src/db/block.h"
 namespace yubindb {
 struct FileMate {  // file mate
   FileMate()=default;
@@ -26,6 +27,8 @@ struct FileMate {  // file mate
   uint64_t file_size;
   InternalKey smallest;
   InternalKey largest;
+  BlockHandle nextbeg;// next level 的开始 -> | 用于优化二分查找
+  BlockHandle nexend; // next level 的结束 -> |
 };
 enum Tag {
   kLogNumber = 0,

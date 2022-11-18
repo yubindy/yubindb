@@ -6,10 +6,18 @@
 
 int main(int argc, char *argv[])
 {
-	std::hash<std::string_view> h;
-	std::string_view p("12344");
-	uint64_t n = h(p[2]);
-	std::cout << n << std::endl;
-
+	std::string_view p("12345");
+	if(p.starts_with("123")){
+		printf("crazy\n");
+	}
+	size_t num;
+	std::string sp(p);
+	num = strtoull (p.data(), NULL, 0);
+	if(num==12345){
+		printf("sadsef");
+	}
+	if(p=="12345"){
+	printf("%d",num);
+	}
 	return 0;
 }

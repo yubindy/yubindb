@@ -1,4 +1,6 @@
 #include "filename.h"
+
+#include <string_view>
 namespace yubindb {
 static std::string MakeFileName(const std::string& dbname, uint64_t number,
                                 const char* suffix) {
@@ -47,5 +49,42 @@ std::string TempFileName(const std::string& dbname, uint64_t number) {
 
 std::string InfoLogFileName(const std::string& dbname) {
   return dbname + "/LOG";
+}
+std::string OldInfoLogFileName(const std::string& dbname) {
+  return dbname + "/LOG.old";
+}
+bool ParsefileName(const std::string& filename, uint64_t* number,
+                   FileType* type) {
+  std::string_view pfile(filename);
+  if (pfile == "CURRENT") {
+    *number = 0;
+    *type = kCurrentFile;
+  } else if (pfile == "LOG" || pfile == "LOG.old") {
+    *number = 0;
+    *type = kInfoLogFile;
+  } else if (pfile.starts_with("MANIFEST-")) {
+    pfile.remove_prefix(strlen("MANIFEST-"));
+    uint64_t num;
+    num = strtoull(pfile.data(), NULL, 0);
+    if (!pfile.empty()) {
+      return false;
+    }
+    *type = kDescriptorFile;
+    *number = num;
+  } else {
+     uint64_t num;
+    std::string_view suffix = pfile;
+    if (suffix == std::string_view(".log")) {
+      *type = kLogFile;
+    } else if (suffix == std::string_view(".sst") || suffix == std::string_view(".ldb")) {
+      *type = kTableFile;
+    } else if (suffix == std::string_view(".dbtmp")) {
+      *type = kTempFile;
+    } else {
+      return false;
+    }
+    *number = num;
+  }
+  return true;
 }
 }  // namespace yubindb
