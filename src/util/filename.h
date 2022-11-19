@@ -33,6 +33,7 @@ std::string LockFileName(const std::string& dbname);
 std::string TempFileName(const std::string& dbname, uint64_t number);
 std::string InfoLogFileName(const std::string& dbname);
 std::string OldInfoLogFileName(const std::string& dbname);
-bool ParsefileName(const std::string& filename, uint64_t number, FileType type);
+bool ParsefileName(const std::string& filename, uint64_t* number,
+                   FileType* type);
 }  // namespace yubindb
 #endif

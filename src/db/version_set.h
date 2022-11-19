@@ -1,7 +1,8 @@
 #ifndef YUBINDB_VERSION_SET_H_
 #define YUBINDB_VERSION_SET_H_
-#include <list>
 #include <memory.h>
+
+#include <list>
 #include <string>
 #include <vector>
 
@@ -42,12 +43,14 @@ class Version {
 class VersionSet {
  public:
   VersionSet(const std::string& dbname_, const Options* options,
-             std::shared_ptr<TableCache>& table_cache_);
+             std::shared_ptr<TableCache>& table_cache_,
+             std::shared_ptr<PosixEnv>& env);
   ~VersionSet() = default;
   State Recover(bool* save_manifest);
   State LogAndApply(VersionEdit* edit, std::mutex* mu);
+  void Finalize(std::unique_ptr<Version>& v);
+  bool NeedsCompaction();
   std::shared_ptr<Version> Current() { return nowversion; }
-  uint64_t MainifsetFileNum() { return manifest_file_number; }
   SequenceNum LastSequence() const { return last_sequence; }
   void SetLastSequence(SequenceNum seq) { last_sequence = seq; }
   uint64_t NewFileNumber() {
@@ -56,10 +59,12 @@ class VersionSet {
   int NumLevelFiles(int level) const { return nowversion->files[level].size(); }
   int64_t NumLevelBytes(int level) const;
   void AddLiveFiles(std::set<uint64_t>* live);
+  uint64_t LogNumber() { return log_number; }
+  uint64_t ManifestFileNumber() { return manifest_file_number; }
 
  private:
   class Builder;
-  const PosixEnv* env_;
+  std::shared_ptr<PosixEnv> env_;
   const std::string dbname;
   const Options* ops;
   std::shared_ptr<TableCache> table_cache;

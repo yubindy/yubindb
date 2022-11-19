@@ -1,6 +1,9 @@
 #include "version_set.h"
 
 #include <algorithm>
+#include <memory>
+
+#include "src/util/options.h"
 namespace yubindb {
 static int64_t TotalFileSize(
     const std::vector<std::shared_ptr<FileMate>>& files) {
@@ -10,9 +13,18 @@ static int64_t TotalFileSize(
   }
   return sum;
 }
+static double MaxBytesForLevel(const Options* options, int level) {
+  double result = 10. * 1048576.0;
+  while (level > 1) {
+    result *= 10;
+    level--;
+  }
+  return result;
+}
 VersionSet::VersionSet(const std::string& dbname_, const Options* options,
-                       std::shared_ptr<TableCache>& table_cache_)
-    : env_(&options->env),
+                       std::shared_ptr<TableCache>& table_cache_,
+                       std::shared_ptr<PosixEnv>& env)
+    : env_(env),
       dbname(dbname_),
       ops(options),
       table_cache(table_cache_),
@@ -148,8 +160,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
       std::vector<std::shared_ptr<FileMate>>* files = &v->files[level];
       if (level > 0 && !files->empty()) {  // TODO level and teir
         // Must not overlap
-        assert(cmp((*files)[files->size() - 1]->largest,
-                   f->smallest) < 0);
+        assert(cmp((*files)[files->size() - 1]->largest, f->smallest) < 0);
       }
       files->push_back(f);
     }
@@ -173,9 +184,17 @@ State VersionSet::LogAndApply(
   std::unique_ptr<Version> v = std::make_unique<Version>(this);
   {
     Builder builder(this, nowversion);
-    builder.Apply(edit);
-    builder.SaveTo(v);
+    builder.Apply(edit); //+
+    builder.SaveTo(v);  //=
   }
+  Finalize(v);
+
+  std::string new_mainifset_file;
+  State s;
+  if(descriptor_log==nullptr){
+    descriptor_log=std::make_unique<walWriter>(descriptor_file);
+  }
+
   // TODO
 }
 int64_t VersionSet::NumLevelBytes(int level) const {
@@ -190,5 +209,24 @@ void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
       }
     }
   }
+}
+void VersionSet::Finalize(std::unique_ptr<Version>& v) {
+  int maxlevel = -1;
+  double maxscore = -1;
+  for (int i = 0; i < config::kNumLevels - 1; i++) {
+    double score;
+    const uint64_t level_bytes = TotalFileSize(v->files[i]);
+    score = static_cast<double>(level_bytes) / MaxBytesForLevel(ops, i);
+    if (score > maxscore) {
+      maxlevel = i;
+      maxscore = score;
+    }
+  }
+  nowversion->compaction_level = maxlevel;
+  nowversion->compaction_score = maxscore;
+}
+bool VersionSet::NeedsCompaction() {
+  return (nowversion->compaction_score >= 1) ||
+         (nowversion->filecompact != nullptr);
 }
 }  // namespace yubindb

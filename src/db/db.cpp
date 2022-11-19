@@ -53,7 +53,7 @@ State DBImpl::NewDB() {
   return s;
 }
 DBImpl::DBImpl(const Options* opt, const std::string& dbname)
-    : env(new PosixEnv),
+    : env(std::make_shared<PosixEnv>()),
       opts(opt),
       dbname(dbname),
       table_cache(new TableCache(dbname, opt)),
@@ -67,7 +67,7 @@ DBImpl::DBImpl(const Options* opt, const std::string& dbname)
       logwrite(nullptr),
       batch(std::make_shared<WriteBatch>()),
       background_compaction_(false),
-      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache)) {
+      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache,env)) {
   if (!bloomfit) {
     bloomfit = std::make_unique<BloomFilter>(10);
   }
@@ -265,7 +265,6 @@ WriteBatch* DBImpl::BuildBatchGroup(DBImpl::Writer** last_writer) {
   return fntbatch;
 }
 State DBImpl::MakeRoomForwrite(bool force) {
-  // TODO
   bool allow_delay = !force;
   State s;
   std::unique_lock<std::mutex> lks(mutex);
@@ -319,6 +318,8 @@ void DBImpl::MaybeCompaction() {
     spdlog::debug("background is work");
   } else if (shutting_down_.load(std::memory_order_acquire)) {
   } else if (!bg_error.ok()) {
+  } else if (imm_ == nullptr && !versions_->NeedsCompaction()) {
+    // No work to be done
   } else {
     background_compaction_ = true;
     env->Schedule(std::bind(&DBImpl::BackgroundCall, this));
@@ -329,6 +330,8 @@ void DBImpl::DeleteObsoleteFiles() {  // delete outtime file
   if (!bg_error.ok()) {
     return;
   }
+  const uint64_t log_number = versions_->LogNumber();
+  const uint64_t manifest_file_number = versions_->ManifestFileNumber();
   std::set<uint64_t> live = pending_file;
   versions_->AddLiveFiles(&live);
   std::vector<std::string> filenames;
@@ -339,9 +342,35 @@ void DBImpl::DeleteObsoleteFiles() {  // delete outtime file
   FileType type;
   for (uint32_t i = 0; i < filenames.size(); i++) {
     // TODO 删除过时的文件，思考添加kv分离的gc
-    if (ParsefileName(filenames[i], &num, &type))
-      ;
+    if (ParsefileName(filenames[i], &num, &type)) {
+      bool keep = true;
+      switch (type) {
+        case kCurrentFile:
+        case kDBLockFile:
+        case kInfoLogFile:
+          keep = true;
+          break;
+        case kDescriptorFile:
+          keep = (num >= manifest_file_number);
+          break;
+        case kLogFile:
+          keep = (num >= log_number);
+          break;
+        case kTableFile:
+        case kTempFile:
+          keep = (live.find(num) != live.end());
+          break;
+      }
+      if (!keep) {
+        if (type == kTableFile) {
+          table_cache->Evict(num);  // clear deletedfile chache
+        }
+        spdlog::info("Delete type={} #{}", type, num);
+        env->DeleteFile(dbname + "/" + filenames[i]);
+      }
+    }
   }
+  mutex.lock();
 }
 std::shared_ptr<const Snapshot> DBImpl::GetSnapshot() {
   std::lock_guard<std::mutex> lk(mutex);
@@ -387,7 +416,7 @@ void DBImpl::CompactMemTable() {
   }
   if (s.ok()) {
     edit.SetLogNumber(logfilenum);
-    s = versions_->LogAndApply(&edit, &mutex);
+    s = versions_->LogAndApply(&edit, &mutex);  // updat version
   }
 
   if (s.ok()) {
