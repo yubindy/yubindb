@@ -57,6 +57,9 @@ class VersionEdit {
     has_last_sequence = true;
     last_sequence = seq;
   }
+  void SetCompactPointer(int level,const InternalKey& key){
+      compact_pointers.emplace_back(std::make_pair(level, key));
+  }
   // 在指定编号处添加指定文件。
   // “smallest”和“largest”是文件中最小和最大的键
   void AddFile(int level, uint64_t file, uint64_t file_size,

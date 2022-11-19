@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <memory>
 
+#include "src/db/version_edit.h"
+#include "src/util/env.h"
+#include "src/util/filename.h"
+#include "src/util/key.h"
 #include "src/util/options.h"
 namespace yubindb {
 static int64_t TotalFileSize(
@@ -152,7 +156,8 @@ class VersionSet::Builder {  // helper form edit+version=next version
       }
     }
   }
-  void MaybeAddFile(std::unique_ptr<Version>& v, int level,
+  void MaybeAddFile(std::unique_ptr<Version>& v,
+                    int level,  //如果满足，则加入version 的 level filemate pair
                     const std::shared_ptr<FileMate>& f) {
     if (levels_[level].deleted_files.count(f->num) > 0) {
       // File is deleted: do nothing
@@ -171,7 +176,7 @@ State VersionSet::Recover(bool* save_manifest) {
   return State::Ok();
 }  // TODO
 State VersionSet::LogAndApply(
-    VersionEdit* edit, std::mutex* mu) {  // nowversion+versionedit=nextversion
+    VersionEdit* edit, std::mutex* mu) {  //将VersionEdit应用到Current Version,并且写入current文件
   if (edit->has_log_number) {
     assert(edit->log_number >= log_number);
     assert(edit->log_number < next_file_number);
@@ -184,18 +189,71 @@ State VersionSet::LogAndApply(
   std::unique_ptr<Version> v = std::make_unique<Version>(this);
   {
     Builder builder(this, nowversion);
-    builder.Apply(edit); //+
-    builder.SaveTo(v);  //=
+    builder.Apply(edit);  //+
+    builder.SaveTo(v);    //=
   }
   Finalize(v);
 
   std::string new_mainifset_file;
   State s;
-  if(descriptor_log==nullptr){
-    descriptor_log=std::make_unique<walWriter>(descriptor_file);
+  if (descriptor_log == nullptr) {
+    new_mainifset_file = DescriptorFileName(dbname, manifest_file_number);
+    edit->SetNextFile(next_file_number);
+    s = env_->NewWritableFile(new_mainifset_file, descriptor_file);
+    if (s.ok()) {
+      descriptor_log = std::make_unique<walWriter>(descriptor_file);
+      s = WriteSnapshot(descriptor_log);  // 把nowversion版本写入MANIFEST
+    }
+  }
+  {
+    mu->unlock();
+    if (s.ok()) {
+      std::string record;
+      edit->EncodeTo(&record);
+      s = descriptor_log->Appendrecord(record);  //将edit写入MANIFEST
+      if (s.ok()) {
+        s = descriptor_file->Sync();
+      }
+    }
+    if (s.ok() && !new_mainifset_file.empty()) {
+      s = SetCurrentFile(env_.get(), dbname, manifest_file_number);
+    }
+    mu->lock();
+  }
+  if (s.ok()) {
+    nowversion = std::make_shared<Version>(v.release());
+    versionlist.emplace_front(nowversion);
+    log_number = edit->log_number;
+  } else {
+    descriptor_log = nullptr;
+    descriptor_file = nullptr;
+    env_->DeleteFile(new_mainifset_file);
+  }
+  return s;
+}
+State VersionSet::WriteSnapshot(
+    std::unique_ptr<walWriter>& log) {  //将nowversion版本写入MANIFEST
+  VersionEdit edit;
+
+  for (int i = 0; i < config::kNumLevels; i++) {  // save compaction pointer;
+    if (!compact_pointer[i].empty()) {
+      InternalKey key;
+      key.DecodeFrom(compact_pointer[i]);
+      edit.SetCompactPointer(i, key);
+    }
   }
 
-  // TODO
+  for (int level = 0; level < config::kNumLevels; level++) {
+    auto& p = nowversion->files[level];
+    for (int i = 0; i < p.size(); i++) {
+      std::shared_ptr<FileMate> f = p[i];
+      edit.AddFile(level, f->num, f->file_size, f->smallest, f->largest);
+    }
+  }
+
+  std::string record;
+  edit.EncodeTo(&record);
+  return log->Appendrecord(record);
 }
 int64_t VersionSet::NumLevelBytes(int level) const {
   return TotalFileSize(nowversion->files[level]);

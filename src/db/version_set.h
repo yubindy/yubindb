@@ -56,6 +56,7 @@ class VersionSet {
   uint64_t NewFileNumber() {
     { return next_file_number++; }
   }
+  State WriteSnapshot(std::unique_ptr<walWriter>& log);
   int NumLevelFiles(int level) const { return nowversion->files[level].size(); }
   int64_t NumLevelBytes(int level) const;
   void AddLiveFiles(std::set<uint64_t>* live);
@@ -75,7 +76,7 @@ class VersionSet {
 
   // uint64_t prev_log_number;
   //  Opened lazily  about write to mainifset
-  std::unique_ptr<WritableFile> descriptor_file;
+  std::shared_ptr<WritableFile> descriptor_file;
   std::unique_ptr<walWriter> descriptor_log;
   std::list<std::shared_ptr<Version>> versionlist;  // ersion构成的双向链表
   std::shared_ptr<Version> nowversion;  //链表头指向当前最新的Version
