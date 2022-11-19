@@ -170,9 +170,8 @@ State DBImpl::Write(const WriteOptions& opt, WriteBatch* updates) {
   // MakeRoomForWrite方法会根据当前MemTable的使用率来选择是否触发Minor
   // Compaction
 
-  // sumState statue = MakeRoomForwrite(updates == nullptr);  // is true,start
+  State statue = MakeRoomForwrite(updates == nullptr);  // is true,start
   // merage
-  State statue;
   uint64_t last_sequence = versions_->LastSequence();
   Writer* now_writer = &w;
   if (statue.ok() && updates != nullptr) {
@@ -242,7 +241,7 @@ State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
     rlock.lock();
   }
   if (have_stat_update) {  //&& current->UpdateStats(stats)) {  jntm
-    MaybeCompaction();     // TODO doing compaction ?
+    MaybeCompaction();
   }
   return s;
 }
@@ -403,6 +402,8 @@ void DBImpl::BackgroundCompaction() {  // doing compaction
     CompactMemTable();
     return;
   }
+  std::unique_ptr<Compaction> c;
+  c = versions_->PickCompaction();
 }
 void DBImpl::CompactMemTable() {
   assert(imm != nullptr);

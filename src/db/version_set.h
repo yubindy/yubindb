@@ -3,6 +3,7 @@
 #include <memory.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "walog.h"
 namespace yubindb {
 class VersionSet;
+class Compaction;
 class Version {
  public:
   struct Stats {
@@ -21,20 +23,17 @@ class Version {
     int seek_file_level;
   };
   explicit Version(VersionSet* vset)
-      : vset(vset),
-        filecompact(nullptr),
-        filecompact_level(-1),
-        compaction_score(-1),
-        compaction_level(-1) {}
+      : vset(vset), compaction_score(-1), compaction_level(-1) {}
   ~Version() = default;
+  void GetOverlappFiles(int level, const InternalKey* begin,
+                        const InternalKey* end,
+                        std::vector<std::shared_ptr<FileMate>>* inputs);
 
  private:
   friend VersionSet;
   VersionSet* vset;
   std::vector<std::shared_ptr<FileMate>>
       files[kNumLevels];  // 每个级别的文件列表
-  FileMate* filecompact;
-  int filecompact_level;
 
   // 用于size_compation
   double compaction_score;
@@ -62,6 +61,13 @@ class VersionSet {
   void AddLiveFiles(std::set<uint64_t>* live);
   uint64_t LogNumber() { return log_number; }
   uint64_t ManifestFileNumber() { return manifest_file_number; }
+  std::unique_ptr<Compaction> PickCompaction();
+  void GetRange(const std::vector<std::shared_ptr<FileMate>>& inputs,
+                InternalKey* smallest, InternalKey* largest);
+  void GetRange2(const std::vector<std::shared_ptr<FileMate>>& inputs1,
+                 const std::vector<std::shared_ptr<FileMate>>& inputs2,
+                 InternalKey* smallest, InternalKey* largest);
+  void SetupOtherInputs(std::unique_ptr<Compaction>& cop);
 
  private:
   class Builder;
@@ -81,6 +87,28 @@ class VersionSet {
   std::list<std::shared_ptr<Version>> versionlist;  // ersion构成的双向链表
   std::shared_ptr<Version> nowversion;  //链表头指向当前最新的Version
   std::string compact_pointer[kNumLevels];  //记录每个层级下次compation启动的key
+};
+class Compaction {
+ public:
+  Compaction(const Options* options, int level);
+  ~Compaction();
+
+ private:
+  friend class Version;
+  friend class VersionSet;
+  int level_;
+  uint64_t max_output_file_size_;
+  std::shared_ptr<Version> input_version_;
+  VersionEdit edit_;
+  std::vector<std::shared_ptr<FileMate>> inputs_[2];
+
+  std::vector<std::shared_ptr<FileMate>> grandparents_;  // level+2
+                                                         // 的overlop情况
+  size_t grand_index;
+  bool seen_key;
+  int64_t overlapbytes;
+
+  size_t level_ptrs[config::kNumLevels];
 };
 }  // namespace yubindb
 #endif

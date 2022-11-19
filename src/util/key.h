@@ -49,6 +49,7 @@ class InternalKey {
     return *this;
   }
   ~InternalKey() = default;
+  void clear(){return Key.clear();}
   const std::string_view getview() const { return std::string_view(Key); }
   const std::string& getString() { return Key; }
   uint64_t parser(SequenceNum num, Valuetype type);

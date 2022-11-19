@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <string_view>
 
 #include "src/db/version_edit.h"
 #include "src/util/env.h"
@@ -24,6 +25,29 @@ static double MaxBytesForLevel(const Options* options, int level) {
     level--;
   }
   return result;
+}
+void Version::GetOverlappFiles(
+    int level, const InternalKey* begin, const InternalKey* end,
+    std::vector<std::shared_ptr<FileMate>>* inputs) {  // get small and large
+  inputs->clear();
+  InternalKey user_beg = *begin, user_end = *end;
+  for (size_t i = 0; i < files[i].size(); i++) {
+    std::shared_ptr<FileMate> p = files[0][i];
+    if (begin != nullptr && cmp(user_beg, p->largest) > 0) {
+    } else if (end != nullptr && cmp(*end, p->smallest) < 0) {
+    } else {
+      inputs->push_back(p);
+      if (begin != nullptr && cmp(user_end, p->smallest) < 0) {
+        user_beg = p->smallest;
+        inputs->clear();
+        i = 0;
+      } else if (end != nullptr && cmp(p->largest, user_end) > 0) {
+        user_end = p->largest;
+        inputs->clear();
+        i = 0;
+      }
+    }
+  }
 }
 VersionSet::VersionSet(const std::string& dbname_, const Options* options,
                        std::shared_ptr<TableCache>& table_cache_,
@@ -176,7 +200,8 @@ State VersionSet::Recover(bool* save_manifest) {
   return State::Ok();
 }  // TODO
 State VersionSet::LogAndApply(
-    VersionEdit* edit, std::mutex* mu) {  //将VersionEdit应用到Current Version,并且写入current文件
+    VersionEdit* edit,
+    std::mutex* mu) {  //将VersionEdit应用到Current Version,并且写入current文件
   if (edit->has_log_number) {
     assert(edit->log_number >= log_number);
     assert(edit->log_number < next_file_number);
@@ -192,7 +217,7 @@ State VersionSet::LogAndApply(
     builder.Apply(edit);  //+
     builder.SaveTo(v);    //=
   }
-  Finalize(v);
+  Finalize(v);  // choose next compaction
 
   std::string new_mainifset_file;
   State s;
@@ -273,18 +298,129 @@ void VersionSet::Finalize(std::unique_ptr<Version>& v) {
   double maxscore = -1;
   for (int i = 0; i < config::kNumLevels - 1; i++) {
     double score;
-    const uint64_t level_bytes = TotalFileSize(v->files[i]);
-    score = static_cast<double>(level_bytes) / MaxBytesForLevel(ops, i);
-    if (score > maxscore) {
-      maxlevel = i;
-      maxscore = score;
+    if (i == 0) {
+      score = v->files[i].size() / static_cast<double>(config::kL0_Compaction);
+    } else {
+      const uint64_t level_bytes = TotalFileSize(v->files[i]);
+      score = static_cast<double>(level_bytes) / MaxBytesForLevel(ops, i);
+      if (score > maxscore) {
+        maxlevel = i;
+        maxscore = score;
+      }
     }
+    nowversion->compaction_level = maxlevel;
+    nowversion->compaction_score = maxscore;
   }
-  nowversion->compaction_level = maxlevel;
-  nowversion->compaction_score = maxscore;
 }
 bool VersionSet::NeedsCompaction() {
-  return (nowversion->compaction_score >= 1) ||
-         (nowversion->filecompact != nullptr);
+  return (nowversion->compaction_score >= 1);
+}
+std::unique_ptr<Compaction>
+VersionSet::PickCompaction() {  // choose compaction input file
+  const bool size_compaction = (nowversion->compaction_score >= 1);
+  std::unique_ptr<Compaction> comp;
+  int level;
+  if (size_compaction) {
+    level = nowversion->compaction_level;
+    comp = std::unique_ptr<Compaction>(ops, level);
+    for (int i = 0; i < nowversion->files[level].size(); i++) {
+      if (compact_pointer[level].empty() ||
+          cmp(compact_pointer[level],
+              nowversion->files[level][i]->largest.getview()) > 0) {
+        comp->inputs_[0].emplace_back(nowversion->files[level][i]);
+        break;
+      }
+    }
+    if (comp->inputs_[0].empty()) {
+      comp->inputs_[0].push_back(nowversion->files[level][0]);
+    }
+  } else {
+    return nullptr;
+  }
+  comp->input_version_ = nowversion;
+
+  if (level == 0) {
+    InternalKey small, large;
+    GetRange(comp->inputs_[0], &small, &large);
+    nowversion->GetOverlappFiles(0, &small, &large,
+                                 &comp->inputs_[0]);  // choose n+1 file
+  }
+  SetupOtherInputs(comp);  // set input[1] n+1;
+  return comp;
+}
+void VersionSet::GetRange(const std::vector<std::shared_ptr<FileMate>>& inputs,
+                          InternalKey* smallest, InternalKey* largest) {
+  smallest->clear();
+  largest->clear();
+  *smallest = inputs[0]->smallest;
+  *largest = inputs[0]->largest;
+  for (int i = 1; i < inputs.size(); i++) {
+    std::shared_ptr<FileMate> p = inputs[i];
+    if (cmp(*smallest, p->smallest) < 0) {
+      *smallest = p->smallest;
+    }
+    if (cmp(*largest, p->largest) > 0) {
+      *largest = p->largest;
+    }
+  }
+}
+void VersionSet::GetRange2(
+    const std::vector<std::shared_ptr<FileMate>>& inputs1,
+    const std::vector<std::shared_ptr<FileMate>>& inputs2,
+    InternalKey* smallest, InternalKey* largest) {
+  std::vector<std::shared_ptr<FileMate>> all = inputs1;
+  all.insert(all.end(), inputs2.begin(), inputs2.end());
+  GetRange(all, smallest, largest);
+}
+void VersionSet::SetupOtherInputs(
+    std::unique_ptr<Compaction>&
+        cop) {  //尽可能扩大n的文件，确定n+1之后用，n+1的
+                // large和其他n的largest 比较确定范围，扩大n
+  InternalKey smallest, largest;
+  GetRange(cop->inputs_[0], &smallest, &largest);
+  nowversion->GetOverlappFiles(cop->level_ + 1, &smallest, &largest,
+                               &cop->inputs_[1]);
+
+  InternalKey all_start, all_limit;
+  GetRange2(cop->inputs_[0], cop->inputs_[1], &all_start,
+            &all_limit);  //在 n和n+1中确定范围
+
+  if (!cop->inputs_[1].empty()) {
+    std::vector<std::shared_ptr<FileMate>> expand;
+    nowversion->GetOverlappFiles(cop->level_, &all_start, &all_limit, &expand);
+    const int64_t inputs0_size = TotalFileSize(cop->inputs_[0]);
+    const int64_t inputs1_size = TotalFileSize(cop->inputs_[1]);
+    const int64_t expand_size = TotalFileSize(expand);
+    if (expand.size() > cop->inputs_[0].size()) {
+      InternalKey new_start, new_limit;
+      GetRange(expand, &new_start, &new_limit);
+      std::vector<std::shared_ptr<FileMate>> expanded1;
+      // 取得level+1中与新的level中的输入文件overlap的文件
+      nowversion->GetOverlappFiles(cop->level_ + 1, &new_start, &new_limit,
+                                   &expanded1);
+      if (expanded1.size() == cop->inputs_[1].size()) {
+        spdlog::info("Expanding@{ %d+%d (%ld+%ld bytes) to %d+%d (%ld+%ld bytes)}", //TODO ？ IS  TRUE
+            cop->level_, int(cop->inputs_[0].size()), int(cop->inputs_[1].size()),
+            long(inputs0_size), long(inputs1_size), int(expand.size()),
+            int(expanded1.size()), long(expand_size), long(inputs1_size));
+        smallest = new_start;
+        largest = new_limit;
+        cop->inputs_[0] = expand;
+        cop->inputs_[1] = expanded1;
+        GetRange2(cop->inputs_[0], cop->inputs_[1], &all_start, &all_limit);
+      }
+    }
+  }
+}
+Compaction::Compaction(const Options* options, int level)
+    : level_(level),
+      max_output_file_size_(options->max_file_size),
+      input_version_(nullptr),
+      grand_index(0),
+      seen_key(false),
+      overlapbytes(0) {
+  for (int i = 0; i < config::kNumLevels; i++) {
+    level_ptrs[i] = 0;
+  }
 }
 }  // namespace yubindb
