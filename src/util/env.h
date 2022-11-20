@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <set>
@@ -85,15 +86,49 @@ class ReadFile {
 //随机读
 class RandomAccessFile {
  public:
-  RandomAccessFile() = default;
+  RandomAccessFile(std::string filename, int fd)
+      : fd_(fd), filename_(std::move(filename)) {
+    assert(fd_ == -1);
+    ::close(fd);
+  }
 
   RandomAccessFile(const RandomAccessFile&) = delete;
   RandomAccessFile& operator=(const RandomAccessFile&) = delete;
-  ~RandomAccessFile();
+  ~RandomAccessFile() {
+    assert(fd_ != -1);
+    ::close(fd_);
+  }
   State Read(uint64_t offset, size_t n, std::string_view* result,
-             char* scratch);
+             char* scratch) {
+    int fd = fd_;
+    fd = ::open(filename_.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+      spdlog::error("error open: filename: {} err: {}", filename_.c_str(),
+                    strerror(errno));
+      return State::IoError();
+    }
+
+    assert(fd != -1);
+
+    State s;
+    ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
+    *result = std::string_view(scratch, (read_size < 0) ? 0 : read_size);
+    if (read_size < 0) {
+      spdlog::error("error read: filename: {} err: {}", filename_.c_str(),
+                    strerror(errno));
+      return State::IoError();
+    }
+    // Close the temporary file descriptor opened earlier.
+    assert(fd != fd_);
+    ::close(fd);
+    return s;
+  }
+
+ private:
+  const int fd_;
+  const std::string filename_;
 };
-class PosixEnv {  // TODO static
+class PosixEnv {
  public:
   typedef std::function<void()> backwork;
   PosixEnv() = default;
