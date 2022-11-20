@@ -1,6 +1,9 @@
 #include "cache.h"
+
+#include <memory>
+#include <string_view>
 namespace yubindb {
-std::shared_ptr<kvpair> LruCache::Insert(kvpair& pair) {
+CacheHandle* LruCache::Insert(kvpair& pair) {
   std::lock_guard<std::mutex> lk(mutex);
   std::shared_ptr<kvpair> hand = std::make_shared<kvpair>(pair);
   auto s = cacheMap.find(pair.first);
@@ -17,25 +20,26 @@ std::shared_ptr<kvpair> LruCache::Insert(kvpair& pair) {
     cacheList.splice(cacheList.begin(), cacheList, s->second);
     s->second = cacheList.begin();
   }
-  return hand;
+  return &pair.second;
 }
-std::shared_ptr<kvpair> LruCache::Lookup(std::string_view& key) {
+CacheHandle* LruCache::Lookup(std::string_view& key) {
   std::lock_guard<std::mutex> lk(mutex);
   auto s = cacheMap.find(key);
   if (s != cacheMap.end()) {
     cacheList.splice(cacheList.begin(), cacheList, s->second);
     s->second = cacheList.begin();
-    return *(s->second);
+    return &((*s->second)->second);
   }
   return nullptr;
 }
-std::shared_ptr<kvpair> ShareCache::Insert(std::string_view& key,
-                                           std::string& value) {
+CacheHandle* ShareCache::Insert(std::string_view& key, std::string& value) {
   int index = std::hash<std::string_view>{}(key) % 16;
-  kvpair pair(key, value);
+  CacheHandle handle;
+  handle.str = &value;
+  kvpair pair(key, handle);
   return sharecache[index]->Insert(pair);
 }
-std::shared_ptr<kvpair> ShareCache::Lookup(std::string_view& key) {
+CacheHandle* ShareCache::Lookup(std::string_view& key) {
   int index = std::hash<std::string_view>{}(key) % 16;
   return sharecache[index]->Lookup(key);
 }
@@ -54,11 +58,19 @@ TableCache::TableCache(std::string_view dbname, const Options* opt)
     : env(new PosixEnv),
       dbname(dbname),
       opt(opt),
-      cache(new ShareCache(opt->max_open_files - kNumNonTableCacheFiles)) {}
+      cache(std::make_unique<ShareCache>(opt->max_open_files -
+                                         kNumNonTableCacheFiles)) {}
 State TableCache::Get(const ReadOptions& readopt, uint64_t file_num,
                       uint64_t file_size, std::string_view key, void* arg,
                       void (*handle_rul)(void*, std::string_view a,
                                          std::string_view b)) {}
 void TableCache::Evict(uint64_t file_number) {}
-State TableCache::FindTable(uint64_t file_num, uint64_t file_size, void**) {}
+State TableCache::FindTable(uint64_t file_num, uint64_t file_size,
+                            CacheHandle** handle) {
+  State s;
+  char buf[sizeof(file_num)];
+  EncodeFixed64(buf, file_num);
+  std::string_view key(buf, sizeof(buf));
+  *handle = cache->Lookup(key);
+}
 }  // namespace yubindb

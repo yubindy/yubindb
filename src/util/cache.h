@@ -1,8 +1,9 @@
 #ifndef YUBINDB_CACHE_H_
 #define YUBINDB_CACHE_H_
+#include <memory.h>
+
 #include <list>
 #include <map>
-#include <memory.h>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -11,15 +12,18 @@
 #include "env.h"
 #include "options.h"
 namespace yubindb {
-using kvpair = std::pair<std::string_view, std::string>;
+struct CacheHandle {
+  std::string* str;
+};
+using kvpair = std::pair<std::string_view, CacheHandle>;
 class LruCache {
  public:
   LruCache() : size(0), use(0) {}
   ~LruCache() = default;
   void SetCapacity(size_t capacity) { size = capacity; }
 
-  std::shared_ptr<kvpair> Insert(kvpair& pair);
-  std::shared_ptr<kvpair> Lookup(std::string_view& key);
+  CacheHandle* Insert(kvpair& pair);
+  CacheHandle* Lookup(std::string_view& key);
   size_t Getsize() const { return cacheList.size() * (sizeof(kvpair) + 8); };
 
  private:
@@ -40,8 +44,8 @@ class ShareCache {
     }
   }
   ~ShareCache() {}
-  std::shared_ptr<kvpair> Insert(std::string_view& key, std::string& value);
-  std::shared_ptr<kvpair> Lookup(std::string_view& key);
+  CacheHandle* Insert(std::string_view& key, std::string& value);
+  CacheHandle* Lookup(std::string_view& key);
   uint64_t NewId();
   size_t Getsize();
 
@@ -50,7 +54,7 @@ class ShareCache {
   std::mutex mutex;
   int last_id;
 };
-class TableCache { //(SSTable.file_number)->(TableAndFile*)
+class TableCache {  //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
@@ -60,7 +64,7 @@ class TableCache { //(SSTable.file_number)->(TableAndFile*)
   void Evict(uint64_t file_number);
 
  private:
-  State FindTable(uint64_t file_num, uint64_t file_size, void**);
+  State FindTable(uint64_t file_num, uint64_t file_size, CacheHandle**);
 
   const PosixEnv* env;
   std::string_view dbname;

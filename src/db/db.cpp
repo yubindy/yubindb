@@ -14,6 +14,7 @@
 #include "spdlog/spdlog.h"
 #include "src/db/filterblock.h"
 #include "src/db/memtable.h"
+#include "src/db/version_set.h"
 #include "src/util/common.h"
 #include "src/util/env.h"
 #include "src/util/options.h"
@@ -67,7 +68,7 @@ DBImpl::DBImpl(const Options* opt, const std::string& dbname)
       logwrite(nullptr),
       batch(std::make_shared<WriteBatch>()),
       background_compaction_(false),
-      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache,env)) {
+      versions_(std::make_unique<VersionSet>(dbname, opt, table_cache, env)) {
   if (!bloomfit) {
     bloomfit = std::make_unique<BloomFilter>(10);
   }
@@ -404,6 +405,20 @@ void DBImpl::BackgroundCompaction() {  // doing compaction
   }
   std::unique_ptr<Compaction> c;
   c = versions_->PickCompaction();
+  State s;
+  if (c == nullptr) {
+  } else if (c->IsTrivialMove()) {  //直接move,不需要合并
+    std::shared_ptr<FileMate> cf = c->Input(0, 0);
+    c->Edit()->DeleteFile(c->Level(), cf->num);
+    c->Edit()->AddFile(c->Level(), cf->num, cf->file_size, cf->smallest,
+                       cf->largest);
+    s = versions_->LogAndApply(c->Edit(), &mutex);
+    spdlog::info("Moved {} to level-{} bytes", cf->num, c->Level(),
+                 cf->file_size);
+  } else {
+    std::unique_ptr<CompactionState> cpst =
+        std::make_unique<CompactionState>(c.get());
+  }
 }
 void DBImpl::CompactMemTable() {
   assert(imm != nullptr);
@@ -475,5 +490,15 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
     env->DeleteFile(fname);
   }
   return s;
+}
+State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
+  spdlog::info("start Compacion form Level {} {} to  Level {} to {}",
+               compact->comp->Level(), compact->comp->Inputsize(0),
+               compact->comp->Level() + 1, compact->comp->Inputsize(1));
+  if (snapshots.empty()) {
+    compact->small_snap = versions_->LastSequence();  //当前seq
+  } else {
+    compact->small_snap = (*snapshots.end())->sequence();  //最久的snapshot seq;
+  }
 }
 }  // namespace yubindb

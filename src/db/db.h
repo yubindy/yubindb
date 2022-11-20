@@ -72,6 +72,28 @@ class DBImpl : public DB {
     State state;
     WriteBatch* batch;
   };
+  struct CompactionState {
+   public:
+    explicit CompactionState(Compaction* c)
+        : comp(c),
+          small_snap(0),
+          outfile(nullptr),
+          builder(nullptr),
+          total_bytes(0) {}
+    struct Output {
+      uint64_t number;
+      uint64_t file_size;
+      InternalKey smallest, largest;
+    };
+    Output* current_output() { return &oupts[oupts.size() - 1]; }
+    Compaction* comp;
+    SequenceNum small_snap;
+    std::vector<Output> oupts;
+    std::shared_ptr<WritableFile> outfile;
+    Tablebuilder* builder;
+
+    uint64_t total_bytes;
+  };
   State NewDB();
   WriteBatch* BuildBatch(Writer** rul);
   WriteBatch* BuildBatchGroup(DBImpl::Writer** last_writer);
@@ -85,10 +107,9 @@ class DBImpl : public DB {
   void BackgroundCompaction();
   void CompactMemTable();
   State WriteLevel0Table(std::shared_ptr<Memtable>& mem, VersionEdit& edit,
-                        std::shared_ptr<Version>& base);
-  State BuildTable(std::shared_ptr<Memtable>& mem,FileMate& meta);
-
-
+                         std::shared_ptr<Version>& base);
+  State BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta);
+  State DoCompactionWork(std::unique_ptr<CompactionState>& compact);
   const std::string dbname;
   const Options* opts;
   std::unique_ptr<FileLock> db_lock;
@@ -114,7 +135,7 @@ class DBImpl : public DB {
   bool background_compaction_;
   std::unique_ptr<VersionSet> versions_;
   State bg_error;
-  //State stats_[kNumLevels];
+  // State stats_[kNumLevels];
   std::shared_ptr<PosixEnv> env;
 };
 }  // namespace yubindb

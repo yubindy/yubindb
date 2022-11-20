@@ -28,7 +28,8 @@ static double MaxBytesForLevel(const Options* options, int level) {
 }
 void Version::GetOverlappFiles(
     int level, const InternalKey* begin, const InternalKey* end,
-    std::vector<std::shared_ptr<FileMate>>* inputs) {  // get small and large
+    std::vector<std::shared_ptr<FileMate>>*
+        inputs) {  // get small and large and push inputs
   inputs->clear();
   InternalKey user_beg = *begin, user_end = *end;
   for (size_t i = 0; i < files[i].size(); i++) {
@@ -399,10 +400,13 @@ void VersionSet::SetupOtherInputs(
       nowversion->GetOverlappFiles(cop->level_ + 1, &new_start, &new_limit,
                                    &expanded1);
       if (expanded1.size() == cop->inputs_[1].size()) {
-        spdlog::info("Expanding@{ %d+%d (%ld+%ld bytes) to %d+%d (%ld+%ld bytes)}", //TODO ？ IS  TRUE
-            cop->level_, int(cop->inputs_[0].size()), int(cop->inputs_[1].size()),
-            long(inputs0_size), long(inputs1_size), int(expand.size()),
-            int(expanded1.size()), long(expand_size), long(inputs1_size));
+        spdlog::info(
+            "Expanding@LEVEL{} FileNum: {} + {} ({} + {} bytes) to Expend "
+            "FileNum {} + {} ({} + {} bytes)",
+            cop->level_, int(cop->inputs_[0].size()),
+            int(cop->inputs_[1].size()), long(inputs0_size), long(inputs1_size),
+            int(expand.size()), int(expanded1.size()), long(expand_size),
+            long(inputs1_size));
         smallest = new_start;
         largest = new_limit;
         cop->inputs_[0] = expand;
@@ -410,6 +414,13 @@ void VersionSet::SetupOtherInputs(
         GetRange2(cop->inputs_[0], cop->inputs_[1], &all_start, &all_limit);
       }
     }
+  }
+  if (cop->level_ + 2 < config::kNumLevels) {
+    nowversion->GetOverlappFiles(
+        cop->level_ + 2, &all_start, &all_limit,
+        &cop->grandparents_);  // 取得level+2 中重叠的文件
+    compact_pointer[cop->level_] = largest.getString();
+    cop->edit_.SetCompactPointer(cop->level_, largest);
   }
 }
 Compaction::Compaction(const Options* options, int level)
@@ -422,5 +433,10 @@ Compaction::Compaction(const Options* options, int level)
   for (int i = 0; i < config::kNumLevels; i++) {
     level_ptrs[i] = 0;
   }
+}
+bool Compaction::IsTrivialMove() {
+  return (inputs_[0].size() == 1 && inputs_[1].size() == 0 &&
+          TotalFileSize(grandparents_) <=
+              input_version_->vset->ops->max_file_size * 10);
 }
 }  // namespace yubindb

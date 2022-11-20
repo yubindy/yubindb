@@ -3,32 +3,29 @@
 #include <map>
 #include <set>
 #include <string_view>
+
 #include "../util/key.h"
 #include "src/db/block.h"
 namespace yubindb {
 struct FileMate {  // file mate
-  FileMate()=default;
+  FileMate() = default;
   ~FileMate() = default;
-  FileMate(FileMate& ptr):allowed_seeks(ptr.allowed_seeks),
-    seek(ptr.seek),
-    num(ptr.num),
-    file_size(ptr.file_size), 
-    smallest(ptr.smallest),
-    largest(ptr.largest){}
-  FileMate(FileMate&& ptr):allowed_seeks(ptr.allowed_seeks),
-    seek(ptr.seek),
-    num(ptr.num),
-    file_size(ptr.file_size), 
-    smallest(ptr.smallest),
-    largest(ptr.largest){}
-  int allowed_seeks;
-  bool seek;  // if compaction is not
+  FileMate(FileMate& ptr)
+      : num(ptr.num),
+        file_size(ptr.file_size),
+        smallest(ptr.smallest),
+        largest(ptr.largest) {}
+  FileMate(FileMate&& ptr)
+      : num(ptr.num),
+        file_size(ptr.file_size),
+        smallest(ptr.smallest),
+        largest(ptr.largest) {}
   uint64_t num;
   uint64_t file_size;
   InternalKey smallest;
   InternalKey largest;
-  BlockHandle nextbeg;// next level 的开始 -> | 用于优化二分查找
-  BlockHandle nexend; // next level 的结束 -> |
+  BlockHandle nextbeg;  // next level 的开始 -> | 用于优化二分查找
+  BlockHandle nexend;   // next level 的结束 -> |
 };
 enum Tag {
   kLogNumber = 0,
@@ -57,8 +54,8 @@ class VersionEdit {
     has_last_sequence = true;
     last_sequence = seq;
   }
-  void SetCompactPointer(int level,const InternalKey& key){
-      compact_pointers.emplace_back(std::make_pair(level, key));
+  void SetCompactPointer(int level, const InternalKey& key) {
+    compact_pointers.emplace_back(std::make_pair(level, key));
   }
   // 在指定编号处添加指定文件。
   // “smallest”和“largest”是文件中最小和最大的键
@@ -92,7 +89,7 @@ class VersionEdit {
   bool has_next_file_number;
   bool has_last_sequence;
 
-  std::vector<std::pair<int,InternalKey>>
+  std::vector<std::pair<int, InternalKey>>
       compact_pointers;  // <level, 对应level的下次compation启动的key>
   DeletedFileSet deleted_files;
   std::vector<std::pair<int, FileMate>> new_files;  // <level，文件描述信息>

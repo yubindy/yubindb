@@ -31,6 +31,7 @@ class Version {
 
  private:
   friend VersionSet;
+  friend class Compaction;
   VersionSet* vset;
   std::vector<std::shared_ptr<FileMate>>
       files[kNumLevels];  // 每个级别的文件列表
@@ -71,6 +72,10 @@ class VersionSet {
 
  private:
   class Builder;
+
+  friend class Compaction;
+  friend class Version;
+
   std::shared_ptr<PosixEnv> env_;
   const std::string dbname;
   const Options* ops;
@@ -92,6 +97,11 @@ class Compaction {
  public:
   Compaction(const Options* options, int level);
   ~Compaction();
+  bool IsTrivialMove();
+  std::shared_ptr<FileMate>& Input(int n, int m) { return inputs_[n][m]; }
+  int Inputsize(int n) { return inputs_[n].size(); }
+  VersionEdit* Edit() { return &edit_; }
+  int Level() { return level_; }
 
  private:
   friend class Version;
@@ -101,7 +111,6 @@ class Compaction {
   std::shared_ptr<Version> input_version_;
   VersionEdit edit_;
   std::vector<std::shared_ptr<FileMate>> inputs_[2];
-
   std::vector<std::shared_ptr<FileMate>> grandparents_;  // level+2
                                                          // 的overlop情况
   size_t grand_index;
