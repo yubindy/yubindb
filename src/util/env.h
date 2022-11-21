@@ -98,8 +98,7 @@ class RandomAccessFile {
     assert(fd_ != -1);
     ::close(fd_);
   }
-  State Read(uint64_t offset, size_t n, std::string_view* result,
-             char* scratch) {
+  State Read(uint64_t offset, size_t n, std::string_view* result) {
     int fd = fd_;
     fd = ::open(filename_.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
@@ -111,6 +110,7 @@ class RandomAccessFile {
     assert(fd != -1);
 
     State s;
+    char scratch[n];
     ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
     *result = std::string_view(scratch, (read_size < 0) ? 0 : read_size);
     if (read_size < 0) {
@@ -139,8 +139,8 @@ class PosixEnv {
   }
   State NewReadFile(const std::string& filename,
                     std::unique_ptr<ReadFile>& result);
-  // State NewRandomAccessFile(const std::string& filename,
-  //                           RandomAccessFile** result);
+  State NewRandomAccessFile(const std::string& filename,
+                            std::shared_ptr<RandomAccessFile>& result);
   State NewWritableFile(const std::string& filename,
                         std::shared_ptr<WritableFile>& result);
   State NewWritableFile(const std::string& filename,

@@ -500,5 +500,7 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   } else {
     compact->small_snap = (*snapshots.end())->sequence();  //最久的snapshot seq;
   }
+  std::unique_ptr<Merageitor> input =
+      versions_->MakeInputIterator(compact->comp);
 }
 }  // namespace yubindb

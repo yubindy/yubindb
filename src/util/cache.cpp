@@ -2,7 +2,13 @@
 
 #include <memory>
 #include <string_view>
+
+#include "filename.h"
 namespace yubindb {
+struct TableAndFile {
+  std::shared_ptr<RandomAccessFile> file;
+  std::shared_ptr<Table> table;
+};
 CacheHandle* LruCache::Insert(kvpair& pair) {
   std::lock_guard<std::mutex> lk(mutex);
   std::shared_ptr<kvpair> hand = std::make_shared<kvpair>(pair);
@@ -32,10 +38,10 @@ CacheHandle* LruCache::Lookup(std::string_view& key) {
   }
   return nullptr;
 }
-CacheHandle* ShareCache::Insert(std::string_view& key, std::string& value) {
+CacheHandle* ShareCache::Insert(std::string_view& key,std::shared_ptr<void> value) {
   int index = std::hash<std::string_view>{}(key) % 16;
   CacheHandle handle;
-  handle.str = &value;
+  handle.str = value;
   kvpair pair(key, handle);
   return sharecache[index]->Insert(pair);
 }
@@ -64,13 +70,49 @@ State TableCache::Get(const ReadOptions& readopt, uint64_t file_num,
                       uint64_t file_size, std::string_view key, void* arg,
                       void (*handle_rul)(void*, std::string_view a,
                                          std::string_view b)) {}
-void TableCache::Evict(uint64_t file_number) {}
-State TableCache::FindTable(uint64_t file_num, uint64_t file_size,
-                            CacheHandle** handle) {
+void TableCache::Evict(uint64_t file_number) {}  // TODO
+State TableCache::FindTable(
+    uint64_t file_num,
+    uint64_t file_size,  //将ldb或sst文件映射为Table类,实现文件的操作
+    CacheHandle** handle) {
   State s;
   char buf[sizeof(file_num)];
   EncodeFixed64(buf, file_num);
   std::string_view key(buf, sizeof(buf));
   *handle = cache->Lookup(key);
+  std::string dbname_(dbname);
+  if (*handle == nullptr) {
+    std::string fname = TableFileName(dbname_, file_num);
+    std::shared_ptr<RandomAccessFile> file = nullptr;
+    std::shared_ptr<Table> table = nullptr;
+    s = env->NewRandomAccessFile(fname, file);
+    if (!s.ok()) {
+      std::string old_fname = SSTTableFileName(dbname_, file_num);
+      if (env->NewRandomAccessFile(old_fname, file).ok()) {
+        s = State::Ok();
+      }
+    }
+    if (s.ok()) {
+      s = Table::Open(*opt, file, file_size, table);
+    }
+    if (s.ok()) {
+      std::shared_ptr<TableAndFile> tf =std::shared_ptr<TableAndFile>();
+      tf->file = file;
+      tf->table = table;
+
+      // 将tf插入到LRUCache中，占据一个大小的缓存，DeleteEntry是删除结点的回调函数
+      *handle = cache->Insert(key,static_cast<std::shared_ptr<void>>(tf));
+    }
+  }
+  return s;
+}
+Iterator* TableCache::NewIterator(const ReadOptions& options,
+                                  uint64_t file_number, uint64_t file_size,
+                                  Table** tableptr = nullptr) {
+  CacheHandle* handle = nullptr;
+  State s = FindTable(file_number, file_size, &handle);
+  if (!s.ok()) {
+    spdlog::error("dont find table Number{} {}", file_number, file_size);
+  }
 }
 }  // namespace yubindb

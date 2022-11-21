@@ -1,23 +1,17 @@
 #include <iostream>
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
-#include <string_view>
-
+void func(std::string_view *p){
+	char buf[6]="fsefe";
+	*p=std::string_view(buf,6);
+	return;
+}
 int main(int argc, char *argv[])
 {
-	std::string_view p("12345");
-	if(p.starts_with("123")){
-		printf("crazy\n");
-	}
-	size_t num;
-	std::string sp(p);
-	num = strtoull (p.data(), NULL, 0);
-	if(num==12345){
-		printf("sadsef");
-	}
-	if(p=="12345"){
-	printf("%d",num);
-	}
+	std::string_view p;
+	func(&p);
+	std::cout<<p<<std::endl;
 	return 0;
 }

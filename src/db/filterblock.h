@@ -27,9 +27,9 @@ class FilterBlockbuilder {
   std::vector<std::string_view> tmp_keys_;
   std::vector<uint32_t> filter_offsets_;
 };
-class FilterBlockreader {
+class FilterBlockReader {
  public:
-  explicit FilterBlockreader(const std::string_view& contents);
+  explicit FilterBlockReader(const std::string_view& contents);
   bool KeyMayMatch(uint64_t block_offset, const std::string_view& key);
 
  private:

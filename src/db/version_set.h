@@ -9,6 +9,7 @@
 
 #include "../util/cache.h"
 #include "../util/env.h"
+#include "../util/iterator.h"
 #include "../util/key.h"
 #include "../util/options.h"
 #include "version_edit.h"
@@ -69,6 +70,7 @@ class VersionSet {
                  const std::vector<std::shared_ptr<FileMate>>& inputs2,
                  InternalKey* smallest, InternalKey* largest);
   void SetupOtherInputs(std::unique_ptr<Compaction>& cop);
+  std::unique_ptr<Merageitor> MakeInputIterator(Compaction* c);
 
  private:
   class Builder;

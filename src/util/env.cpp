@@ -5,8 +5,9 @@
 #include <memory.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <thread>
 #include <unistd.h>
+
+#include <thread>
 
 #include "filename.h"
 #include "spdlog/spdlog.h"
@@ -147,6 +148,18 @@ State PosixEnv::NewReadFile(const std::string& filename,
     return State::IoError();
   }
   result = std::make_unique<ReadFile>(filename, fd);
+  return State::Ok();
+}
+State NewRandomAccessFile(const std::string& filename,
+                          std::shared_ptr<RandomAccessFile>& result) {
+  int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
+  if (fd < 0) {
+    result = nullptr;
+    spdlog::error("error open: filename: {} err: {}", filename,
+                  strerror(errno));
+    return State::IoError();
+  }
+  result = std::shared_ptr<RandomAccessFile>(filename, fd);
   return State::Ok();
 }
 State PosixEnv::NewWritableFile(const std::string& filename,

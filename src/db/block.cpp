@@ -1,8 +1,57 @@
 #include "block.h"
 
+#include <crc32c/crc32c.h>
+#include <snappy.h>
+#include <spdlog/spdlog.h>
+
+#include <cstddef>
+#include <memory>
+#include <string_view>
+
+#include "src/db/version_set.h"
 #include "src/util/common.h"
 #include "src/util/options.h"
 namespace yubindb {
+State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
+                const BlockHandle& handle, std::string_view* result) {
+  *result = std::string_view();
+
+  size_t n = handle.size();
+  std::string_view content;
+  State s = file->Read(handle.offset(), n + kBlockBackSize, &content);
+  if (!s.ok() || content.size() != n + kBlockBackSize) {
+    return s;
+  }
+  const uint32_t crc = DecodeFixed32(content.data() + n + 1);
+  const uint32_t truecrc = crc32c::Crc32c(content.data(), n + 1);
+  if (crc != truecrc) {
+    spdlog::error("block checksum mismatch");
+    return State::Corruption();
+  }
+  switch (*(content.data() + n)) {
+    case kNoCompression:
+      *result = content;
+      break;
+    case kSnappyCompression: {
+      size_t len = 0;
+      if (snappy::GetUncompressedLength(content.data(), n, &len)) {
+        spdlog::error("block checksum mismatch");
+        return State::Corruption();
+      }
+      std::string ptr;
+      if (!snappy::Uncompress(content.data(), n, &ptr)) {
+        spdlog::error("block checksum mismatch");
+        return State::Corruption();
+      }
+      result.assign(ptr.data(), ptr.size());
+      break;
+    }
+    default:
+      spdlog::error("block type");
+      return State::Corruption();
+      return State::Ok();
+  }
+}
 void Blockbuilder::Reset() {
   buffer.clear();
   restarts.clear();
@@ -45,13 +94,12 @@ void Blockbuilder::Add(std::string_view key, std::string_view value) {
   assert(std::string_view(last_key) == key);
   entrynum++;
 }
-std::string_view Blockbuilder::Finish(){ //write restart piont
-    for(size_t i=0;i<restarts.size();i++){
-        PutFixed32(&buffer,restarts[i]);
-    }
-    PutFixed32(&buffer,restarts.size());
-    finished =true;
-    return std::string(buffer);
+std::string_view Blockbuilder::Finish() {  // write restart piont
+  for (size_t i = 0; i < restarts.size(); i++) {
+    PutFixed32(&buffer, restarts[i]);
+  }
+  PutFixed32(&buffer, restarts.size());
+  finished = true;
+  return std::string(buffer);
 }
-
 };  // namespace yubindb

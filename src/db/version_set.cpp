@@ -129,10 +129,6 @@ class VersionSet::Builder {  // helper form edit+version=next version
       const std::shared_ptr<FileMate> f =
           std::make_shared<FileMate>(edit->new_files[i].second);
 
-      f->allowed_seeks = static_cast<int>(
-          (f->file_size / 16384U));  // for seeks miss to compaction
-      if (f->allowed_seeks < 100) f->allowed_seeks = 100;
-
       levels_[level].deleted_files.erase(f->num);
       levels_[level].added_files->insert(f);
     }
@@ -421,6 +417,25 @@ void VersionSet::SetupOtherInputs(
         &cop->grandparents_);  // 取得level+2 中重叠的文件
     compact_pointer[cop->level_] = largest.getString();
     cop->edit_.SetCompactPointer(cop->level_, largest);
+  }
+}
+std::unique_ptr<Merageitor> VersionSet::MakeInputIterator(Compaction* c) {
+  ReadOptions options;
+  const int space = (c->Level() == 0 ? c->inputs_[0].size() + 1 : 2);
+  Iterator** list = new Iterator*[space];
+  int num = 0;
+  for (int i = 0; i < 2; i++) {
+    if (c->inputs_[i].empty()) {
+      if (c->Level() + i == 0) {
+        const std::vector<std::shared_ptr<FileMate>>& files = c->inputs_[i];
+        for (size_t i = 0; i < files.size(); i++) {
+          list[num++] = table_cache->NewIterator(options, files[i]->num,
+                                                 files[i]->file_size);
+        }
+      } else {
+        list[num++];
+      }
+    }
   }
 }
 Compaction::Compaction(const Options* options, int level)

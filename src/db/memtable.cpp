@@ -1,7 +1,7 @@
 #include "memtable.h"
 
 #include <crc32c/crc32c.h>
-
+#include <snappy.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -179,7 +179,7 @@ void Tablebuilder::WriteBlock(Blockbuilder* block, BlockHandle* handle) {
       break;
     case kSnappyCompression: {
       std::string* compress = &compressed_output;
-      if (Snappy_Compress(raw.data(), raw.size(), compress) &&
+      if (snappy::Compress(raw.data(), raw.size(), compress) &&
           compress->size() < raw.size() - (raw.size() / 8u)) {  //压缩比太小
         block_ = *compress;
       } else {

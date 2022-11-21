@@ -9,11 +9,13 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "../db/sstable.h"
 #include "env.h"
+#include "iterator.h"
 #include "options.h"
 namespace yubindb {
 struct CacheHandle {
-  std::string* str;
+  std::shared_ptr<void> str;
 };
 using kvpair = std::pair<std::string_view, CacheHandle>;
 class LruCache {
@@ -44,7 +46,7 @@ class ShareCache {
     }
   }
   ~ShareCache() {}
-  CacheHandle* Insert(std::string_view& key, std::string& value);
+  CacheHandle* Insert(std::string_view& key, std::shared_ptr<void> value);
   CacheHandle* Lookup(std::string_view& key);
   uint64_t NewId();
   size_t Getsize();
@@ -58,15 +60,17 @@ class TableCache {  //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
+  Iterator* NewIterator(const ReadOptions& options, uint64_t file_number,
+                        uint64_t file_size, Table** tableptr = nullptr);
   State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,
             std::string_view key, void* arg,
             void (*handle_rul)(void*, std::string_view a, std::string_view b));
   void Evict(uint64_t file_number);
 
  private:
-  State FindTable(uint64_t file_num, uint64_t file_size, CacheHandle**);
+  State FindTable(uint64_t file_num, uint64_t file_size, CacheHandle** handle);
 
-  const PosixEnv* env;
+  PosixEnv* env;
   std::string_view dbname;
   const Options* const opt;
   std::unique_ptr<ShareCache> cache;
