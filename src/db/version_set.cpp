@@ -26,10 +26,25 @@ static double MaxBytesForLevel(const Options* options, int level) {
   }
   return result;
 }
-void Version::GetOverlappFiles(
-    int level, const InternalKey* begin, const InternalKey* end,
-    std::vector<std::shared_ptr<FileMate>>*
-        inputs) {  // get small and large and push inputs
+int FindFile(const std::vector<std::shared_ptr<FileMate>>& files, //二分找文件
+             std::string_view key) {
+  uint32_t left = 0;
+  uint32_t right = files.size();
+  while (left < right) {
+    uint32_t mid = (left + right) / 2;
+    std::shared_ptr<FileMate> f = files[mid];
+    if (cmp(f->largest.getview(), key) < 0) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return right;
+}
+void Version::GetOverlappFiles(int level, const InternalKey* begin,
+                               const InternalKey* end,
+                               std::vector<std::shared_ptr<FileMate>>* inputs) {
+  // get small and large and push inputs
   inputs->clear();
   InternalKey user_beg = *begin, user_end = *end;
   for (size_t i = 0; i < files[i].size(); i++) {
@@ -433,7 +448,9 @@ std::unique_ptr<Merageitor> VersionSet::MakeInputIterator(Compaction* c) {
                                                  files[i]->file_size);
         }
       } else {
-        list[num++];
+        list[num++] = NewTwoLevelIterator(
+            new LevelFileNumIterator(&c->inputs_[i]),
+            &GetFileIterator, table_cache_, options);
       }
     }
   }

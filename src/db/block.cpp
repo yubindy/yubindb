@@ -38,12 +38,12 @@ State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
         spdlog::error("block checksum mismatch");
         return State::Corruption();
       }
-      std::string ptr;
-      if (!snappy::Uncompress(content.data(), n, &ptr)) {
+      std::string* ptr = new std::string();
+      if (!snappy::Uncompress(content.data(), n, ptr)) {
         spdlog::error("block checksum mismatch");
         return State::Corruption();
       }
-      result.assign(ptr.data(), ptr.size());
+      *result = std::string_view(ptr->data(), len);
       break;
     }
     default:
