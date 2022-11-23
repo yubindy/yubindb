@@ -13,11 +13,15 @@
 #include "../util/iterator.h"
 #include "../util/key.h"
 #include "../util/options.h"
+#include "src/util/common.h"
 #include "version_edit.h"
 #include "walog.h"
 namespace yubindb {
 class VersionSet;
 class Compaction;
+static int64_t MaxGrandParentOverlapBytes(const Options* options) {
+  return 10 * options->max_file_size;
+}
 int FindFile(const std::vector<std::shared_ptr<FileMate>>& files,
              std::string_view key);
 class Version {
@@ -78,7 +82,7 @@ class LevelFileNumIterator : public Iterator {
     EncodeFixed64(value_buf_ + 8, (*flist_)[index_]->file_size);
     return std::string_view(value_buf_, sizeof(value_buf_));
   }
-  State state() const { return State::Ok(); }
+  State state() override { return State::Ok(); }
 
  private:
   const std::vector<std::shared_ptr<FileMate>>* const flist_;
@@ -148,8 +152,14 @@ class Compaction {
   bool IsTrivialMove();
   std::shared_ptr<FileMate>& Input(int n, int m) { return inputs_[n][m]; }
   int Inputsize(int n) { return inputs_[n].size(); }
+  std::vector<std::shared_ptr<FileMate>> Input(int n) { return inputs_[n]; }
   VersionEdit* Edit() { return &edit_; }
   int Level() { return level_; }
+  uint64_t MaxOutputFileSize() const { return max_output_file_size_; }
+  void AddInputDeletions(VersionEdit* edit);  // for input 0 删除文件
+  bool IsBaseLevelForKey(std::string_view user_key);
+  bool ShouldStopBefore(std::string_view internal_key);
+  void ReleaseInputs();
 
  private:
   friend class Version;

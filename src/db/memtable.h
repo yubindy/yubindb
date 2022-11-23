@@ -52,7 +52,7 @@ class Tablebuilder {
         pending_index_entry(false) {
     indexoptions.block_restart_interval = 1;
   }
-  void Add(const InternalKey& key, const std::string& val);
+  void Add(const std::string_view& key, const std::string_view& val);
   void Flush();
   State Finish();
   void WriteBlock(Blockbuilder* block, BlockHandle* handle);

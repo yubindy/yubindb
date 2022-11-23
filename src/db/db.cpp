@@ -17,6 +17,8 @@
 #include "src/db/version_set.h"
 #include "src/util/common.h"
 #include "src/util/env.h"
+#include "src/util/iterator.h"
+#include "src/util/key.h"
 #include "src/util/options.h"
 #include "version_edit.h"
 class Version;
@@ -500,7 +502,164 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   } else {
     compact->small_snap = (*snapshots.end())->sequence();  //最久的snapshot seq;
   }
-  std::unique_ptr<Merageitor> input =
-      versions_->MakeInputIterator(compact->comp);
+
+  Iterator* iter = versions_->MakeInputIterator(compact->comp);  //用于多路归并
+  State s;
+  mutex.unlock();
+  iter->SeekToFirst();
+  ParsedInternalKey pkey;
+  std::string cur_usrkey;
+  bool has_cur_userkey;
+  SequenceNum last_seqkey = kMaxSequenceNumber;
+  while (iter->Valid() && !shutting_down_.load(std::memory_order_acquire)) {
+    if (has_imm_.load(std::memory_order_relaxed)) {
+      mutex.lock();
+      if (imm_ != nullptr) {
+        CompactMemTable();
+        background_work_finished_signal.notify_all();
+      }
+      mutex.lock();
+    }
+    std::string_view key = iter->key();
+    if (compact->comp->ShouldStopBefore(key) && compact->builder != nullptr) {
+      s = FinishCompactionOutputFile(compact.get(), iter);
+      if (!s.ok()) {
+        break;
+      }
+    }
+    bool drop = false;
+    if (!ParseInternalKey(key, &pkey)) {
+      cur_usrkey.clear();
+      has_cur_userkey = false;
+      last_seqkey = kMaxSequenceNumber;
+    } else if (!has_cur_userkey ||
+               cmp(pkey.user_key, std::string_view(cur_usrkey)) != 0) {
+      cur_usrkey.assign(pkey.user_key.data(), pkey.user_key.size());
+      has_cur_userkey = true;
+      last_seqkey = kMaxSequenceNumber;
+    }
+    if (last_seqkey <= compact->small_snap) {
+      drop = true;  //删除小时间辍kv
+    } else if (pkey.type == kTypeDeletion &&
+               pkey.sequence <= compact->small_snap &&
+               compact->comp->IsBaseLevelForKey(pkey.user_key)) {
+      drop = true;
+    }
+    last_seqkey = pkey.sequence;
+    if (!drop) {
+      // Open output file if necessary
+      if (compact->builder == nullptr) {
+        // 蕴含着向compact.outputs写数据的操作
+        s = OpenCompactionOutputFile(compact.get());
+        if (!s.ok()) {
+          break;
+        }
+      }
+      if (compact->builder->Numentries() == 0) {
+        compact->current_output()->smallest.DecodeFrom(key);
+      }
+      compact->current_output()->largest.DecodeFrom(key);
+      compact->builder->Add(key, iter->value());
+      if (compact->builder->Size() >= compact->comp->MaxOutputFileSize()) {
+        s = FinishCompactionOutputFile(compact.get(), iter);
+      }
+    }
+    iter->Next();
+  }
+  if (s.ok() && shutting_down_.load(std::memory_order_acquire)) {
+    spdlog::error("Deleting DB during compaction");
+    s = State::IoError();
+  }
+  if (s.ok() && compact->builder != nullptr) {
+    s = FinishCompactionOutputFile(compact.get(), iter);
+  }
+  if (s.ok()) {
+    s = iter->state();
+  }
+  delete iter;
+  iter = nullptr;
+  mutex.lock();
+  if (s.ok()) {
+    s = InstallCompactionResults(compact.get());  // 将新生成的sst 加入到Version中
+  }
+  if (!s.ok()) {
+    spdlog::error("installcompaction error");
+  }
+  VersionSet::LevelSummaryStorage tmp;
+  Log(options_.info_log, "compacted to: %s", versions_->LevelSummary(&tmp));
+  return s;
+}
+State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
+                                         Iterator* input) {
+  assert(compact != nullptr);
+  assert(compact->outfile != nullptr);
+  assert(compact->builder != nullptr);
+  const uint64_t output_number = compact->current_output()->number;
+  State s = input->state();
+  const uint64_t entriesnum = compact->builder->Numentries();
+  if (s.ok()) {
+    s = compact->builder->Finish();
+  } else {
+    spdlog::error("iterator error");
+  }
+  const uint64_t current_bytes = compact->builder->Size();
+  compact->current_output()->file_size = current_bytes;
+  compact->total_bytes += current_bytes;
+  delete compact->builder;
+  if (s.ok()) {
+    s = compact->outfile->Sync();
+  }
+  if (s.ok()) {
+    s = compact->outfile->Close();
+  }
+  compact->outfile = nullptr;
+  if (s.ok() && entriesnum > 0) {
+    Iterator* iter =
+        table_cache->NewIterator(ReadOptions(), output_number, current_bytes);
+    s = iter->state();
+    delete iter;
+  }
+  return s;
+}
+State DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
+  uint64_t file_number;
+  {
+    mutex.lock();
+    file_number = versions_->NewFileNumber();
+    pending_outputs_.insert(file_number);
+    CompactionState::Output out;
+    out.number = file_number;
+    out.smallest.clear();
+    out.largest.clear();
+    compact->oupts.push_back(out);
+    mutex.unlock();
+  }
+  //生成输出只写文件
+  std::string fname = TableFileName(fname, file_number);
+  State s = env->NewWritableFile(fname, compact->outfile);
+  if (s.ok()) {
+    compact->builder = new Tablebuilder(*opts, compact->outfile);
+  }
+  return s;
+}
+State DBImpl::InstallCompactionResults(CompactionState* compact){ //将writablefile写入
+  spdlog::info("Compacted %d@%d + %d@%d files => %lld bytes",
+      compact->comp->Input(0), compact->comp->Level(),
+      compact->comp->Input(1), compact->comp->Level() + 1,
+      static_cast<long long>(compact->total_bytes));
+
+  //将这些文件加入到VersionEdit的deleted_files_中
+  compact->comp->AddInputDeletions(compact->comp->Edit());
+
+  // 将新生成的sst文件加入到VersionEdit的new_files_中
+  const int level = compact->comp->Level();
+  for (size_t i = 0; i < compact->oupts.size(); i++) {
+    const CompactionState::Output& out = compact->oupts[i];
+    compact->comp->Edit()->AddFile(level + 1, out.number, out.file_size,
+                                         out.smallest, out.largest);
+  }
+
+  //生成一个新的Version
+  return versions_->LogAndApply(compact->comp->Edit(), &mutex);
 }
 }  // namespace yubindb

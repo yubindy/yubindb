@@ -88,7 +88,7 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
   node* p = table->SeekToFirst();
   meta.smallest = p->key;
   for (; table->Valid(p); p = table->Next(p)) {
-    builder->Add(p->key, p->val);
+    builder->Add(p->key.getview(), p->val);
   }
   while (!table->Valid(p)) {
     p = table->Prev(p);
@@ -98,22 +98,21 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
   return s;
 
 }
-void Tablebuilder::Add(const InternalKey& key, const std::string& val) {
+void Tablebuilder::Add(const std::string_view& key, const std::string_view& val) {
   assert(!closed);
-  std::string_view keyview = key.getview();
   if (pending_index_entry) {
     assert(data_block.empty());
     std::string handle_entry;
     pending_handle.EncodeTo(&handle_entry);
-    index_block.Add(keyview, std::string_view(handle_entry));
+    index_block.Add(key, std::string_view(handle_entry));
     pending_index_entry = false;
   }
   if (filter_block != nullptr) {
-    filter_block->AddKey(keyview);
+    filter_block->AddKey(key);
   }
-  last_key.assign(keyview.data(), keyview.size());
+  last_key.assign(key.data(), key.size());
   num_entries++;
-  data_block.Add(keyview, val);
+  data_block.Add(key, val);
   if (data_block.CurrentSizeEstimate() >= options.block_size) {
     Flush();
   }
