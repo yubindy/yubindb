@@ -78,13 +78,13 @@ class LevelFileNumIterator : public Iterator {
     EncodeFixed64(value_buf_ + 8, (*flist_)[index_]->file_size);
     return std::string_view(value_buf_, sizeof(value_buf_));
   }
-  State status() const { return State::Ok(); }
+  State state() const { return State::Ok(); }
 
  private:
   const std::vector<std::shared_ptr<FileMate>>* const flist_;
   uint32_t index_;
 
-  // Backing store for value().  Holds the file number and size.
+  // Holds the file number and size.
   mutable char value_buf_[16];
 };
 class VersionSet {
@@ -116,7 +116,7 @@ class VersionSet {
                  const std::vector<std::shared_ptr<FileMate>>& inputs2,
                  InternalKey* smallest, InternalKey* largest);
   void SetupOtherInputs(std::unique_ptr<Compaction>& cop);
-  std::unique_ptr<Merageitor> MakeInputIterator(Compaction* c);
+  Iterator* MakeInputIterator(Compaction* c);
 
  private:
   class Builder;

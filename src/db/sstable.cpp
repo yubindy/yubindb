@@ -17,7 +17,7 @@ State Table::Open(const Options& options_,
     spdlog::error("file is too smart an sstable");
     return State::Corruption();
   }
-  char foot_buf[Footer::kEncodedLength];
+  // char foot_buf[Footer::kEncodedLength];
   std::string_view foot_input;
   State s = file->Read(file_size - Footer::kEncodedLength,
                        Footer::kEncodedLength, &foot_input);
@@ -80,5 +80,10 @@ void Table::ReadFilter(std::string_view filter_handle_value) {
   pl->filter_data = block.data();  // Will need to delete later
 
   pl->filter = std::make_shared<FilterBlockReader>(block);
+}
+Iterator* Table::NewIterator(const ReadOptions&opt) const {
+  return NewTwoLevelIterator(pl->index_block->NewIterator(),
+                             &Table::BlockReader, const_cast<Table*>(this),
+                             opt);
 }
 }  // namespace yubindb

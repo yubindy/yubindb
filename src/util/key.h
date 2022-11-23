@@ -86,22 +86,6 @@ static inline int cmp(const InternalKey& a_,
   }
   return r;
 }
-static inline int cmp(const std::string_view& a,
-                      const std::string_view& b) {  // inernalkey cmp
-
-  int r = std::string_view(a.data(), a.size() - 8)
-              .compare(std::string_view(b.data(), b.size() - 8));
-  if (r == 0) {
-    const uint64_t anum = DecodeFixed64(a.data() + a.size() - 8);
-    const uint64_t bnum = DecodeFixed64(b.data() + b.size() - 8);
-    if (anum > bnum) {
-      r = -1;
-    } else if (anum < bnum) {
-      r = +1;
-    }
-  }
-  return r;
-}
 // We construct a char array of the form:
 //    klength  varint32               <-- start_
 //    userkey  char[klength]          <-- kstart_
