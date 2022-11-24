@@ -87,7 +87,7 @@ static inline int cmp(const InternalKey& a_,
   return r;
 }
 struct ParsedInternalKey {
-  public:
+ public:
   std::string_view user_key;
   SequenceNum sequence;
   Valuetype type;
@@ -124,16 +124,12 @@ class Lookey {
     return std::string_view(kstart, end - kstart);
   }
 
-  // Return an internal key (suitable for passing to an internal iterator)
-  // std::string  const {
-  //   std::string ptr;
-  //   ptr.resize(end - kstart);
-  //   memcpy(ptr.data(), kstart, end - kstart);
-  //   return ptr;
-  // }
   std::pair<const char*, const char*> internal_key() const {
     std::pair<const char*, const char*> spt(kstart, end);
     return spt;
+  }
+  std::string_view inter_key() const {
+    return std::string_view(kstart, end-kstart);
   }
   // Return the user key
   std::string_view key() const {

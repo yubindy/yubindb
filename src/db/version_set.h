@@ -24,15 +24,42 @@ static int64_t MaxGrandParentOverlapBytes(const Options* options) {
 }
 int FindFile(const std::vector<std::shared_ptr<FileMate>>& files,
              std::string_view key);
+enum SaverState {
+  kNotFound,
+  kFound,
+  kDeleted,
+  kCorrupt,
+};
+struct Saver {
+  SaverState state;
+  std::string_view user_key;
+  std::string* value;
+};
+static void SaveValue(void* arg, std::string_view ikey, std::string_view v) {
+  Saver* s = reinterpret_cast<Saver*>(arg);
+  ParsedInternalKey parsed_key;
+  if (!ParseInternalKey(ikey, &parsed_key)) {
+    s->state = kCorrupt; //data error
+  } else {
+    if (cmp(parsed_key.user_key, s->user_key) == 0) {
+      s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;
+      if (s->state == kFound) {
+        s->value->assign(v.data(), v.size());
+      }
+    }
+  }
+}
 class Version {
  public:
-  struct Stats {
+  struct GetStats {
     std::shared_ptr<FileMate> seek_file;
     int seek_file_level;
   };
   explicit Version(VersionSet* vset)
       : vset(vset), compaction_score(-1), compaction_level(-1) {}
   ~Version() = default;
+  State Get(const ReadOptions& op, const Lookey& key, std::string* val,
+            GetStats* stats);
   void GetOverlappFiles(int level, const InternalKey* begin,
                         const InternalKey* end,
                         std::vector<std::shared_ptr<FileMate>>* inputs);

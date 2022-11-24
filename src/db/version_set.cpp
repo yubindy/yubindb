@@ -41,6 +41,85 @@ int FindFile(const std::vector<std::shared_ptr<FileMate>>& files,  //二分找�
   }
   return right;
 }
+static bool NewestFirst(std::shared_ptr<FileMate>& a,
+                        std::shared_ptr<FileMate>& b) {
+  return a->num > b->num;
+}
+State Version::Get(const ReadOptions& op, const Lookey& key, std::string* val,
+                   GetStats* stats) {
+  std::string_view ikey = key.inter_key();
+  std::string_view user_key = key.key();
+  State s;
+  stats = nullptr;
+  std::shared_ptr<FileMate> last_file_read = nullptr;
+  int last_file_read_level = -1;
+  std::vector<std::shared_ptr<FileMate>> tmp;
+  std::shared_ptr<FileMate> tmp2;
+  for (int level = 0; level < config::kNumLevels; level++) {
+    size_t num_files = files[level].size();
+    if (num_files == 0) continue;
+    std::shared_ptr<FileMate> const* files_ = &files[level][0];
+    if (level == 0) {  //按照顺序迭代
+      tmp.reserve(num_files);
+      for (uint32_t i = 0; i < num_files; i++) {
+        std::shared_ptr<FileMate> f = files_[i];
+        if (cmp(user_key, f->smallest.getview()) >= 0 &&
+            cmp(user_key, f->largest.getview()) <= 0) {
+          tmp.push_back(f);
+        }
+      }
+      if (tmp.empty()) continue;
+      std::sort(tmp.begin(), tmp.end(), NewestFirst);
+      files_ = &tmp[0];
+      num_files = tmp.size();
+    } else {
+      uint32_t index = FindFile(files[level], ikey);
+      if (index >= num_files) {
+        files_ = nullptr;
+        num_files = 0;
+      } else {
+        tmp2 = files_[index];
+        if (cmp(user_key, tmp2->smallest.getview()) < 0) {
+          files_ = nullptr;
+          num_files = 0;
+        } else {
+          files_ = &tmp2;
+          num_files = 1;
+        }
+      }
+    }
+    for (uint32_t i = 0; i < num_files; i++) {
+      if (last_file_read != nullptr && stats == nullptr) {
+        std::shared_ptr<FileMate> f = files_[i];
+        last_file_read = f;
+        last_file_read_level = level;
+
+        Saver saver;
+        saver.state = kNotFound;
+        saver.user_key = user_key;
+        saver.value = val;
+        s = vset->table_cache->Get(op, f->num, f->file_size, ikey, &saver,
+                                   SaveValue);  //回调保存save里
+        if (!s.ok()) {
+          return s;
+        }
+        switch (saver.state) {
+          case kNotFound:
+            break;  // Keep searching in other files
+          case kFound:
+            return s;
+          case kDeleted:
+            s = State::Notfound();
+            return s;
+          case kCorrupt:
+            s = State::Corruption();
+            spdlog::error("corrupted key for ", user_key);
+            return s;
+        }
+      }
+    }
+  }
+}
 void Version::GetOverlappFiles(int level, const InternalKey* begin,
                                const InternalKey* end,
                                std::vector<std::shared_ptr<FileMate>>* inputs) {
