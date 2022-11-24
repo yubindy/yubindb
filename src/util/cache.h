@@ -23,7 +23,7 @@ class LruCache {
   LruCache() : size(0), use(0) {}
   ~LruCache() = default;
   void SetCapacity(size_t capacity) { size = capacity; }
-
+  void Erase(std::string_view ekey);
   CacheHandle* Insert(kvpair& pair);
   CacheHandle* Lookup(std::string_view& key);
   size_t Getsize() const { return cacheList.size() * (sizeof(kvpair) + 8); };
@@ -48,9 +48,10 @@ class ShareCache {
   ~ShareCache() {}
   CacheHandle* Insert(std::string_view& key, std::shared_ptr<void> value);
   CacheHandle* Lookup(std::string_view& key);
-  void* Value(CacheHandle* handle) {
-    return reinterpret_cast<LRUHandle*>(handle)->value;
-  }
+  void Erase(std::string_view ekey);
+  // void* Value(CacheHandle* handle) {
+  //   return reinterpret_cast<CacheHandle*>(handle)->;
+  // }
   uint64_t NewId() {
     std::unique_lock<ShareCache>(mutex);
     return ++(last_id);
@@ -66,7 +67,7 @@ class TableCache {  //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
-  Iterator* NewIterator(const ReadOptions& options, uint64_t file_number,
+  std::shared_ptr<Iterator> NewIterator(const ReadOptions& options, uint64_t file_number,
                         uint64_t file_size,
                         std::shared_ptr<Table> tableptr = nullptr);
   State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,

@@ -111,7 +111,7 @@ class DBImpl : public DB {
                          std::shared_ptr<Version>& base);
   State BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta);
   State DoCompactionWork(std::unique_ptr<CompactionState>& compact);
-  State FinishCompactionOutputFile(CompactionState* compact, Iterator* input);
+  State FinishCompactionOutputFile(CompactionState* compact,std::shared_ptr<Iterator>& input);
   State OpenCompactionOutputFile(CompactionState* compact);
   State InstallCompactionResults(CompactionState* compact);
   const std::string dbname;

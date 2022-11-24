@@ -2,6 +2,8 @@
 #define YUBINDB_ITERATOR_H_
 #include <spdlog/spdlog.h>
 
+#include <cstddef>
+#include <memory>
 #include <string_view>
 
 #include "options.h"
@@ -27,12 +29,14 @@ class Iterator {
 class IteratorWrapper {
  public:
   IteratorWrapper() : iter_(nullptr), valid_(false) {}
-  explicit IteratorWrapper(Iterator* iter) : iter_(nullptr) { Set(iter); }
-  ~IteratorWrapper() { delete iter_; }
-  Iterator* iter() const { return iter_; }
+  explicit IteratorWrapper(std::shared_ptr<Iterator>& iter) {
+    Set(iter);
+    iter = nullptr;
+  }
+  ~IteratorWrapper() {}
+  std::shared_ptr<Iterator> iter() const { return iter_; }
 
-  void Set(Iterator* iter) {
-    delete iter_;
+  void Set(std::shared_ptr<Iterator>& iter) {
     iter_ = iter;
     if (iter_ == nullptr) {
       valid_ = false;
@@ -40,7 +44,10 @@ class IteratorWrapper {
       Update();
     }
   }
-
+  void clear() {
+    iter_ = nullptr;
+    valid_ = false;
+  }
   // Iterator interface methods
   bool Valid() const { return valid_; }
   std::string_view key() const {
@@ -89,20 +96,22 @@ class IteratorWrapper {
     }
   }
 
-  Iterator* iter_;
+  std::shared_ptr<Iterator> iter_;
   bool valid_;
   std::string_view key_;
 };
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, std::string_view);
+typedef std::shared_ptr<Iterator> (*BlockFunction)(void*, const ReadOptions&,
+                                                   std::string_view);
 class TweLevelIterator : public Iterator {
  public:
-  TweLevelIterator(Iterator* index_iter_, BlockFunction block_function,
-                   void* arg, const ReadOptions& options)
+  TweLevelIterator(std::shared_ptr<Iterator>& index_iter_,
+                   BlockFunction block_function, void* arg,
+                   const ReadOptions& options)
       : block_function_(block_function),
         arg_(arg),
         options_(options),
         index_iter(index_iter_),
-        data_iter(nullptr) {}
+        data_iter() {}
 
   ~TweLevelIterator() override{};
 
@@ -131,9 +140,10 @@ class TweLevelIterator : public Iterator {
   }
 
  private:
+  void clear();
   void SkipEmptyDataBlocksForward();
   void SkipEmptyDataBlocksBackward();
-  void SetDataIterator(Iterator* data_iter);
+  void SetDataIterator(std::shared_ptr<Iterator>& data_iter);
   void InitDataBlock();
   BlockFunction block_function_;
   void* arg_;
@@ -175,7 +185,7 @@ void TweLevelIterator::Prev() {
 void TweLevelIterator::SkipEmptyDataBlocksForward() {
   while (data_iter.iter() == nullptr || !data_iter.Valid()) {
     if (!index_iter.Valid()) {
-      SetDataIterator(nullptr);
+      clear();
       return;
     }
     index_iter.Next();
@@ -187,7 +197,7 @@ void TweLevelIterator::SkipEmptyDataBlocksForward() {
 void TweLevelIterator::SkipEmptyDataBlocksBackward() {
   while (data_iter.iter() == nullptr || !data_iter.Valid()) {
     if (!index_iter.Valid()) {
-      SetDataIterator(nullptr);
+      clear();
       return;
     }
     index_iter.Prev();
@@ -195,38 +205,47 @@ void TweLevelIterator::SkipEmptyDataBlocksBackward() {
     if (data_iter.iter() != nullptr) data_iter.SeekToLast();
   }
 }
-void TweLevelIterator::SetDataIterator(Iterator* data_iter_) {
+void TweLevelIterator::SetDataIterator(std::shared_ptr<Iterator>& data_iter_) {
   if (data_iter.iter() != nullptr) {
     data_iter.Set(data_iter_);
     spdlog::error("SetDataIterator error");
   }
 }
+void TweLevelIterator::clear() {
+  if (data_iter.iter() != nullptr) {
+    data_iter.clear();
+  }
+}
 void TweLevelIterator::InitDataBlock() {
   if (!index_iter.Valid()) {
-    SetDataIterator(nullptr);
+    clear();
   } else {
     std::string_view handle = index_iter.value();
     if (data_iter.iter() != nullptr && handle.compare(data_block_handle) == 0) {
     } else {
-      Iterator* iter = (*block_function_)(arg_, options_, handle);
+      std::shared_ptr<Iterator> iter =
+          (*block_function_)(arg_, options_, handle);
       data_block_handle.assign(handle.data(), handle.size());
       SetDataIterator(iter);
     }
   }
 }
-static Iterator* GetFileIterator(void* arg, const ReadOptions& options,
-                                 std::string_view file_value);
-Iterator* NewTwoLevelIterator(
-    Iterator* index_iter,
-    Iterator* (*block_function)(void* arg, const ReadOptions& options,
-                                std::string_view index_value),
+static std::shared_ptr<Iterator> GetFileIterator(void* arg,
+                                                 const ReadOptions& options,
+                                                 std::string_view file_value);
+std::shared_ptr<Iterator> NewTwoLevelIterator(
+    std::shared_ptr<Iterator> index_iter,
+    std::shared_ptr<Iterator> (*block_function)(void* arg,
+                                                const ReadOptions& options,
+                                                std::string_view index_value),
     void* arg, const ReadOptions& options) {
-  return new TweLevelIterator(index_iter, block_function, arg, options);
+  return std::make_shared<TweLevelIterator>(index_iter, block_function, arg,
+                                            options);
 }
 
 class Merageitor : public Iterator {
  public:
-  Merageitor(Iterator** children, int n)
+  Merageitor(std::shared_ptr<Iterator>* children, int n)
       : children_(new IteratorWrapper[n]),
         n_(n),
         current_(nullptr),
@@ -367,13 +386,14 @@ void Merageitor::FindLargest() {
   current_ = largest;
 }
 
-Iterator* NewMergingIterator(Iterator** children, int n) {
+std::shared_ptr<Iterator> NewMergingIterator(
+    std::shared_ptr<Iterator>* children, int n) {
   if (n == 0) {
     return nullptr;
   } else if (n == 1) {
     return children[0];
   } else {
-    return new Merageitor(children, n);
+    return std::make_shared<Merageitor>(children, n);
   }
 }
 }  // namespace yubindb

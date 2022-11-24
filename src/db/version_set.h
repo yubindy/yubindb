@@ -120,7 +120,7 @@ class VersionSet {
                  const std::vector<std::shared_ptr<FileMate>>& inputs2,
                  InternalKey* smallest, InternalKey* largest);
   void SetupOtherInputs(std::unique_ptr<Compaction>& cop);
-  Iterator* MakeInputIterator(Compaction* c);
+  std::shared_ptr<Iterator> MakeInputIterator(Compaction* c);
 
  private:
   class Builder;

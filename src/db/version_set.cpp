@@ -434,10 +434,10 @@ void VersionSet::SetupOtherInputs(
     cop->edit_.SetCompactPointer(cop->level_, largest);
   }
 }
-Iterator* VersionSet::MakeInputIterator(Compaction* c) {
+std::shared_ptr<Iterator> VersionSet::MakeInputIterator(Compaction* c) {
   ReadOptions options;
   const int space = (c->Level() == 0 ? c->inputs_[0].size() + 1 : 2);
-  Iterator** list = new Iterator*[space];
+  std::shared_ptr<Iterator>* list = new std::shared_ptr<Iterator>[space];
   int num = 0;
   for (int i = 0; i < 2; i++) {
     if (c->inputs_[i].empty()) {
@@ -448,13 +448,14 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
                                                  files[i]->file_size);
         }
       } else {
-        list[num++] =
-            NewTwoLevelIterator(new LevelFileNumIterator(&c->inputs_[i]),
-                                &GetFileIterator, table_cache, options);
+        list[num++] = NewTwoLevelIterator(
+            std::static_pointer_cast<Iterator>(
+                std::make_shared<LevelFileNumIterator>(&c->inputs_[i])),
+            &GetFileIterator, table_cache, options);
       }
     }
   }
-  Iterator* result = NewMergingIterator(list, num);
+  std::shared_ptr<Iterator> result = NewMergingIterator(list, num);
   delete[] list;
   return result;
 }
@@ -476,18 +477,17 @@ bool Compaction::IsTrivialMove() {
 }
 bool Compaction::IsBaseLevelForKey(std::string_view user_key) {
   for (int lvl = level_ + 2; lvl < config::kNumLevels; lvl++) {
-    const std::vector<std::shared_ptr<FileMate>>& files = input_version_->files[lvl];
+    const std::vector<std::shared_ptr<FileMate>>& files =
+        input_version_->files[lvl];
     while (level_ptrs[lvl] < files.size()) {
       std::shared_ptr<FileMate> f = files[level_ptrs[lvl]];
       if (cmp(user_key, f->largest.getview()) <= 0) {
-        // We've advanced far enough
         if (cmp(user_key, f->smallest.getview()) >= 0) {
-          // Key falls in this file's range, so definitely not base level
           return false;
         }
         break;
       }
-      level_ptrs_[lvl]++;
+      level_ptrs[lvl]++;
     }
   }
   return true;

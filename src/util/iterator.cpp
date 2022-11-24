@@ -5,7 +5,7 @@
 
 #include "cache.h"
 namespace yubindb {
-Iterator* GetFileIterator(void* arg, const ReadOptions& options,
+std::shared_ptr<Iterator> GetFileIterator(void* arg, const ReadOptions& options,
                           std::string_view file_value) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
   if (file_value.size() != 16) {

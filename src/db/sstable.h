@@ -29,13 +29,13 @@ class Table {
                     std::shared_ptr<Table>& table);
   Table(const Table&) = delete;
   Table& operator=(const Table&) = delete;
-  Iterator* NewIterator(const ReadOptions&);
+  std::shared_ptr<Iterator> NewIterator(const ReadOptions&);
   ~Table();
 
  private:
   friend class TableCache;
 
-  static Iterator* BlockReader(void*, const ReadOptions&, std::string_view);
+  static std::shared_ptr<Iterator> BlockReader(void*, const ReadOptions&, std::string_view);
 
   explicit Table(std::unique_ptr<Tablestpl>& pl_) { pl.reset(pl_.release()); }
 

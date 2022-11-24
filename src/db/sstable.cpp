@@ -81,7 +81,35 @@ void Table::ReadFilter(std::string_view filter_handle_value) {
 
   pl->filter = std::make_shared<FilterBlockReader>(block);
 }
-Iterator* Table::NewIterator(const ReadOptions&opt) const {
+State Table::InternalGet(const ReadOptions& options, std::string_view k,
+                         void* arg,
+                         void (*handle_result)(void*, std::string_view,
+                                               std::string_view)) {
+  State s;
+  std::shared_ptr<Iterator> iiter = pl->index_block->NewIterator();
+  iiter->Seek(k);
+  if (iiter->Valid()) {
+    std::string_view handle_value = iiter->value();
+    std::shared_ptr<FilterBlockReader> filter = pl->filter;
+    BlockHandle handle;
+    if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
+        !filter->KeyMayMatch(handle.offset(), k)) {
+      // Not found
+    } else {
+      std::shared_ptr<Iterator> block_iter = BlockReader(this, options, iiter->value());
+      block_iter->Seek(k);
+      if (block_iter->Valid()) {
+        (*handle_result)(arg, block_iter->key(), block_iter->value());
+      }
+      s = block_iter->state();
+    }
+  }
+  if (s.ok()) {
+    s = iiter->state();
+  }
+  return s;
+}
+std::shared_ptr<Iterator> Table::NewIterator(const ReadOptions& opt) {
   return NewTwoLevelIterator(pl->index_block->NewIterator(),
                              &Table::BlockReader, const_cast<Table*>(this),
                              opt);

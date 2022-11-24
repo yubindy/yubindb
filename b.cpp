@@ -6,13 +6,7 @@
 #include <string_view>
 
 #include "stdio.h"
-struct pub {
-  pub() { printf("init\n"); }
-  ~pub() { printf("desondy\n"); }
-}; int main(int argc, char* argv[]) {
-	std::shared_ptr<pub> pb=std::make_shared<pub>();
-	std::shared_ptr<pub> pb1=pb;
-	pb=nullptr;
-	printf("end\n");
-	return 0;
+int main() {
+        std::shared_ptr<int> p=std::static_pointer_cast<std::shared_ptr<int>>(std::make_shared<uint64_t>(14));
+        return
 }

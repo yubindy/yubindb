@@ -6,7 +6,6 @@
 #include <string_view>
 
 #include "../util/arena.h"
-#include "../util/cache.h"
 #include "../util/key.h"
 #include "../util/skiplistpg.h"
 #include "block.h"
@@ -24,7 +23,6 @@ class Memtable {
   void FindShortestSeparator(std::string* start, std::string_view limit);
   void FindShortSuccessor(std::string* key);
   uint32_t ApproximateMemoryUsage();
-  // Iterator* NewIterator(); //TODO?
   void Add(SequenceNum seq, Valuetype type, std::string_view key,
            std::string_view value);
   bool Get(const Lookey& key, std::string* value, State* s);

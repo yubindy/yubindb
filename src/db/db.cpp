@@ -503,7 +503,7 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
     compact->small_snap = (*snapshots.end())->sequence();  //最久的snapshot seq;
   }
 
-  Iterator* iter = versions_->MakeInputIterator(compact->comp);  //用于多路归并
+  std::shared_ptr<Iterator> iter = versions_->MakeInputIterator(compact->comp);  //用于多路归并
   State s;
   mutex.unlock();
   iter->SeekToFirst();
@@ -576,7 +576,6 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   if (s.ok()) {
     s = iter->state();
   }
-  delete iter;
   iter = nullptr;
   mutex.lock();
   if (s.ok()) {
@@ -590,7 +589,7 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   return s;
 }
 State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
-                                         Iterator* input) {
+                                         std::shared_ptr<Iterator>& input) {
   assert(compact != nullptr);
   assert(compact->outfile != nullptr);
   assert(compact->builder != nullptr);
@@ -614,10 +613,9 @@ State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   }
   compact->outfile = nullptr;
   if (s.ok() && entriesnum > 0) {
-    Iterator* iter =
+    std::shared_ptr<Iterator> iter =
         table_cache->NewIterator(ReadOptions(), output_number, current_bytes);
     s = iter->state();
-    delete iter;
   }
   return s;
 }
