@@ -29,7 +29,7 @@ class VersionSet;
 namespace yubindb {
 void static initlogfile(std::shared_ptr<spdlog::logger> p) {
   try {
-    auto logger = spdlog::basic_logger_mt("basic_logger", "logs/basic-log.txt");
+    auto logger = spdlog::basic_logger_mt("basic_logger", "logs/basic.log");
     logger->set_level(spdlog::level::debug);
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e][thread %t][%@,%!][%l] : %v");
     logger->flush_on(spdlog::level::info);
