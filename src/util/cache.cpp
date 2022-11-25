@@ -82,7 +82,8 @@ State TableCache::Get(const ReadOptions& readopt, uint64_t file_num,
                       void (*handle_rul)(void*, std::string_view a,
                                          std::string_view b)) {
   CacheHandle* handle = nullptr;
-  State s = FindTable(file_num, file_size, &handle);
+  State s = FindTable(file_num, file_size,
+                      &handle);  //从 table cache 中找到对应的 table 对象
   if (s.ok()) {
     std::shared_ptr<Table> t =
         (*std::static_pointer_cast<std::shared_ptr<TableAndFile>>(handle->str))

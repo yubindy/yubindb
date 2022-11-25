@@ -39,7 +39,7 @@ static void SaveValue(void* arg, std::string_view ikey, std::string_view v) {
   Saver* s = reinterpret_cast<Saver*>(arg);
   ParsedInternalKey parsed_key;
   if (!ParseInternalKey(ikey, &parsed_key)) {
-    s->state = kCorrupt; //data error
+    s->state = kCorrupt;  // data error
   } else {
     if (cmp(parsed_key.user_key, s->user_key) == 0) {
       s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;
@@ -186,7 +186,7 @@ class Compaction {
   void AddInputDeletions(VersionEdit* edit);  // for input 0 删除文件
   bool IsBaseLevelForKey(std::string_view user_key);
   bool ShouldStopBefore(std::string_view internal_key);
-  void ReleaseInputs();
+  void ReleaseInputs() { input_version_ = nullptr; }
 
  private:
   friend class Version;

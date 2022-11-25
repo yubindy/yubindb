@@ -51,6 +51,9 @@ class InternalKey {
   ~InternalKey() = default;
   void clear() { return Key.clear(); }
   const std::string_view getview() const { return std::string_view(Key); }
+  const std::string_view getusrkeyview() const {
+    return std::string_view(Key.data(), Key.size() - 8);
+  }
   const std::string getString() { return Key; }
   uint64_t parser(SequenceNum num, Valuetype type);
   bool DecodeFrom(std::string_view s) {
@@ -129,7 +132,7 @@ class Lookey {
     return spt;
   }
   std::string_view inter_key() const {
-    return std::string_view(kstart, end-kstart);
+    return std::string_view(kstart, end - kstart);
   }
   // Return the user key
   std::string_view key() const {

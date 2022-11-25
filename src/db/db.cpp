@@ -227,7 +227,7 @@ State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
   std::shared_ptr<Memtable> mem = mem_;
   std::shared_ptr<Memtable> imm = imm_;
   std::shared_ptr<Version> current = versions_->Current();
-  Version::GetStats mate;
+  Version::GetStats stats;
   bool have_stat_update = false;
   {
     rlock.unlock();
@@ -237,12 +237,12 @@ State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
     } else if (imm != nullptr && imm->Get(lk, value, &s)) {
       // done
     } else {
-      s = current->Get(options, lk, value,&mate);
+      s = current->Get(options, lk, value, &stats);
       have_stat_update = true;
     }
     rlock.lock();
   }
-  if (have_stat_update) {  //&& current->UpdateStats(stats)) {  jntm
+  if (have_stat_update) {
     MaybeCompaction();
   }
   return s;
@@ -546,10 +546,8 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
       drop = true;
     }
     last_seqkey = pkey.sequence;
-    if (!drop) {
-      // Open output file if necessary
+    if (!drop) {  //如果没有删除
       if (compact->builder == nullptr) {
-        // 蕴含着向compact.outputs写数据的操作
         s = OpenCompactionOutputFile(compact.get());
         if (!s.ok()) {
           break;
@@ -560,8 +558,12 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
       }
       compact->current_output()->largest.DecodeFrom(key);
       compact->builder->Add(key, iter->value());
+      // close big output file
       if (compact->builder->Size() >= compact->comp->MaxOutputFileSize()) {
         s = FinishCompactionOutputFile(compact.get(), iter);
+        if (!s.ok()) {
+          break;
+        }
       }
     }
     iter->Next();
@@ -576,18 +578,6 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   if (s.ok()) {
     s = iter->state();
   }
-  iter = nullptr;
-  mutex.lock();
-  if (s.ok()) {
-    s = InstallCompactionResults(
-        compact.get());  // 将新生成的sst 加入到Version中
-  }
-  if (!s.ok()) {
-    spdlog::error("installcompaction error");
-  }
-  VersionSet::LevelSummaryStorage tmp;
-  Log(options_.info_log, "compacted to: %s", versions_->LevelSummary(&tmp));
-  return s;
 }
 State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
                                          std::shared_ptr<Iterator>& input) {
@@ -619,47 +609,5 @@ State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
     s = iter->state();
   }
   return s;
-}
-State DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
-  uint64_t file_number;
-  {
-    mutex.lock();
-    file_number = versions_->NewFileNumber();
-    pending_outputs_.insert(file_number);
-    CompactionState::Output out;
-    out.number = file_number;
-    out.smallest.clear();
-    out.largest.clear();
-    compact->oupts.push_back(out);
-    mutex.unlock();
-  }
-  //生成输出只写文件
-  std::string fname = TableFileName(fname, file_number);
-  State s = env->NewWritableFile(fname, compact->outfile);
-  if (s.ok()) {
-    compact->builder = new Tablebuilder(*opts, compact->outfile);
-  }
-  return s;
-}
-State DBImpl::InstallCompactionResults(
-    CompactionState* compact) {  //将writablefile写入
-  spdlog::info("Compacted %d@%d + %d@%d files => %lld bytes",
-               compact->comp->Input(0), compact->comp->Level(),
-               compact->comp->Input(1), compact->comp->Level() + 1,
-               static_cast<long long>(compact->total_bytes));
-
-  //将这些文件加入到VersionEdit的deleted_files_中
-  compact->comp->AddInputDeletions(compact->comp->Edit());
-
-  // 将新生成的sst文件加入到VersionEdit的new_files_中
-  const int level = compact->comp->Level();
-  for (size_t i = 0; i < compact->oupts.size(); i++) {
-    const CompactionState::Output& out = compact->oupts[i];
-    compact->comp->Edit()->AddFile(level + 1, out.number, out.file_size,
-                                   out.smallest, out.largest);
-  }
-
-  //生成一个新的Version
-  return versions_->LogAndApply(compact->comp->Edit(), &mutex);
 }
 }  // namespace yubindb

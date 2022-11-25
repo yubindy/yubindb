@@ -103,7 +103,7 @@ std::shared_ptr<Iterator> Table::BlockReader(void* args, const ReadOptions& opt,
   if (block != nullptr) {
     iter = block->NewIterator();
   } else {
-    spdlog::error("newiterator");
+    spdlog::error("new iterator blockreader error");
   }
   return iter;
 }
