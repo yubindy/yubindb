@@ -7,10 +7,19 @@ cc_binary(
     ],
 )
 
-cc_binary(
+cc_test(
     name = "bloom",
     srcs = ["testbloom.cpp"],
     deps = [
-        "//src/util:bloom",
+        "//src/util:util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+cc_test(
+    name = "table",
+    srcs = ["testbloom.cpp"],
+    deps = [
+        "//src/util:db",
+        "@com_google_googletest//:gtest_main",
     ],
 )

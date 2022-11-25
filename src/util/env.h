@@ -102,7 +102,7 @@ class RandomAccessFile {
     int fd = fd_;
     fd = ::open(filename_.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-      spdlog::error("error open: filename: {} err: {}", filename_.c_str(),
+      log->error("error open: filename: {} err: {}", filename_.c_str(),
                     strerror(errno));
       return State::IoError();
     }
@@ -114,7 +114,7 @@ class RandomAccessFile {
     ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
     *result = std::string_view(scratch, (read_size < 0) ? 0 : read_size);
     if (read_size < 0) {
-      spdlog::error("error read: filename: {} err: {}", filename_.c_str(),
+      log->error("error read: filename: {} err: {}", filename_.c_str(),
                     strerror(errno));
       return State::IoError();
     }

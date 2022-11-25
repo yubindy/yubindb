@@ -27,7 +27,7 @@ State Footer::DecodeFrom(std::string_view* input) {
   const uint64_t magic = ((static_cast<uint64_t>(magic_hi) << 32) |
                           (static_cast<uint64_t>(magic_lo)));
   if (magic != kTableMagicNumber) {
-    spdlog::warn("not an sstable (bad magic number");
+    log->warn("not an sstable (bad magic number");
     return State::Corruption();
   }
   State rul = metaindex_handle_.DecodeFrom(input);

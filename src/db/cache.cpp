@@ -3,7 +3,7 @@
 #include <memory>
 #include <string_view>
 
-#include "filename.h"
+#include "../util/filename.h"
 namespace yubindb {
 struct TableAndFile {
  public:
@@ -138,7 +138,7 @@ std::shared_ptr<Iterator> TableCache::NewIterator(
   CacheHandle* handle = nullptr;
   State s = FindTable(file_number, file_size, &handle);
   if (!s.ok()) {
-    spdlog::error("dont find table Number{} {}", file_number, file_size);
+    log->error("dont find table Number{} {}", file_number, file_size);
   }
   std::shared_ptr<Table> table =
       (*std::static_pointer_cast<std::shared_ptr<TableAndFile>>(handle->str))

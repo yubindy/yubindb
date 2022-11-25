@@ -12,11 +12,11 @@
 #include <string>
 #include <string_view>
 
-#include "../util/cache.h"
-#include "../util/common.h"
-#include "../util/env.h"
-#include "../util/options.h"
+#include "cache.h"
 #include "memtable.h"
+#include "src/util/common.h"
+#include "src/util/env.h"
+#include "src/util/options.h"
 #include "version_set.h"
 #include "walog.h"
 #include "writebatch.h"
@@ -111,7 +111,8 @@ class DBImpl : public DB {
                          std::shared_ptr<Version>& base);
   State BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta);
   State DoCompactionWork(std::unique_ptr<CompactionState>& compact);
-  State FinishCompactionOutputFile(CompactionState* compact,std::shared_ptr<Iterator>& input);
+  State FinishCompactionOutputFile(CompactionState* compact,
+                                   std::shared_ptr<Iterator>& input);
   State OpenCompactionOutputFile(CompactionState* compact);
   State InstallCompactionResults(CompactionState* compact);
   const std::string dbname;
@@ -141,6 +142,7 @@ class DBImpl : public DB {
   State bg_error;
   // State stats_[kNumLevels];
   std::shared_ptr<PosixEnv> env;
+  std::shared_ptr<spdlog::logger> log;
 };
 }  // namespace yubindb
 #endif

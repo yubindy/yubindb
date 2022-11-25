@@ -22,11 +22,10 @@ void FilterBlockbuilder::CreateNewfilter() {
     return;
   }
   start_.emplace_back(keys_.size());
-  tmp_keys_.resize(num_key);
-  for (int i = 0; i < start_.size(); i++) {
+  for (int i = 0; i < start_.size()-1; i++) {
     const char* p = keys_.data() + start_[i];
     size_t length = start_[i + 1] - start_[i];
-    tmp_keys_[i] = std::string_view(p, length);
+    tmp_keys_.emplace_back(std::string_view(p, length));
   }
   filter_offsets_.emplace_back(result_.size());
   bloomfit->CreateFiler(&tmp_keys_[0], start_.size(), &result_);
@@ -46,7 +45,7 @@ std::string_view FilterBlockbuilder::Finish() {
   result_.push_back(kFilterBaseLg);
   return std::string_view(result_);
 }
-FilterBlockreader::FilterBlockreader(const std::string_view& contents)
+FilterBlockReader::FilterBlockReader(const std::string_view& contents)
     : data(nullptr), offset(nullptr), num(0), base_lg(0) {
   size_t n = contents.size();
   if (n < 5) return;
@@ -57,7 +56,7 @@ FilterBlockreader::FilterBlockreader(const std::string_view& contents)
   offset = data + index_offset;
   num = (n - 5 - index_offset) / 4;
 }
-bool FilterBlockreader::KeyMayMatch(uint64_t block_offset,
+bool FilterBlockReader::KeyMayMatch(uint64_t block_offset,
                                     const std::string_view& key) {
   uint64_t index = block_offset >> base_lg;
   if (index < num) {

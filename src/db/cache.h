@@ -9,10 +9,10 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "../db/sstable.h"
-#include "env.h"
+#include "../util/env.h"
+#include "../util/options.h"
 #include "iterator.h"
-#include "options.h"
+#include "sstable.h"
 namespace yubindb {
 struct CacheHandle {
   std::shared_ptr<void> str;
@@ -53,7 +53,7 @@ class ShareCache {
   //   return reinterpret_cast<CacheHandle*>(handle)->;
   // }
   uint64_t NewId() {
-    std::unique_lock<ShareCache>(mutex);
+    std::unique_lock<std::mutex>(mutex);
     return ++(last_id);
   }
   size_t Getsize();
@@ -67,9 +67,9 @@ class TableCache {  //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
   ~TableCache() = default;
-  std::shared_ptr<Iterator> NewIterator(const ReadOptions& options, uint64_t file_number,
-                        uint64_t file_size,
-                        std::shared_ptr<Table> tableptr = nullptr);
+  std::shared_ptr<Iterator> NewIterator(
+      const ReadOptions& options, uint64_t file_number, uint64_t file_size,
+      std::shared_ptr<Table> tableptr = nullptr);
   State Get(const ReadOptions& readopt, uint64_t file_num, uint64_t file_size,
             std::string_view key, void* arg,
             void (*handle_rul)(void*, std::string_view a, std::string_view b));

@@ -12,6 +12,7 @@
 #include "common.h"
 #include "skiplist.h"
 namespace yubindb {
+
 typedef uint64_t SequenceNum;
 enum Valuetype {
   kTypeDeletion = 0X0,
@@ -179,6 +180,24 @@ class SkiplistKey {  // for skiplist
 
  private:
   const char* str;
+};
+struct FileMate {  // file mate
+  FileMate() = default;
+  ~FileMate() = default;
+  FileMate(const FileMate& ptr)
+      : num(ptr.num),
+        file_size(ptr.file_size),
+        smallest(ptr.smallest),
+        largest(ptr.largest) {}
+  FileMate(FileMate&& ptr)
+      : num(ptr.num),
+        file_size(ptr.file_size),
+        smallest(ptr.smallest),
+        largest(ptr.largest) {}
+  uint64_t num;
+  uint64_t file_size;
+  InternalKey smallest;
+  InternalKey largest;  // TODO 优化二分查询
 };
 }  // namespace yubindb
 #endif

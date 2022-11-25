@@ -4,6 +4,12 @@ workspace(name = "yubindb")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+http_archive(
+  name = "com_google_googletest",
+  urls = ["https://github.com/google/googletest/archive/release-1.10.0.zip"],
+  strip_prefix = "googletest-release-1.10.0",
+  sha256 = "94c634d499558a76fa649edb13721dce6e98fb1e7018dfaeba3cd7a083945e91",
+)
 
 http_archive(
     name = "hedron_compile_commands",
@@ -35,16 +41,8 @@ new_local_repository(
     build_file = "thirdparties/crc32.BUILD",
 )
 
-
--- http_archive(
---     name = "com_github_cschuet_snappy",
---     strip_prefix = "snappy-7b7f8fc8e162bbf24ad31fa046d995703179a3be",
---     sha256 = "a62d0fa46f3efb3cec7779d95bbf3320195d2f106d63db5a029eeebf0e7ec67f",
---     urls = [
---         "https://github.com/cschuet/snappy/archive/7b7f8fc8e162bbf24ad31fa046d995703179a3be.tar.gz",
---     ],
--- )
-
--- load("@com_github_cschuet_snappy//:bazel/repositories.bzl", "repositories")
-
--- repositories()
+new_local_repository(
+    name = "snappy",
+    path = "/usr/src/snappy",
+    build_file = "thirdparties/snappy.BUILD"
+)

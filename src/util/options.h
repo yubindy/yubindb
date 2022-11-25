@@ -1,5 +1,11 @@
 #ifndef YUBINDB_OPTIONS_H_
 #define YUBINDB_OPTIONS_H_
+#include <spdlog/common.h>
+#include <spdlog/logger.h>
+
+#include <iostream>
+#include <memory>
+
 #include "env.h"
 namespace yubindb {
 class Snapshot;
@@ -61,12 +67,6 @@ static const int kL0_SlowdownWrites = 8;
 // Maximum number of level-0 files.  We stop writes at this point.
 static const int kL0_StopWrites = 12;
 
-// Maximum level to which a new compacted memtable is pushed if it
-// does not create overlap.  We try to push to level 2 to avoid the
-// relatively expensive level 0=>1 compactions and to avoid some
-// expensive manifest file operations.  We do not push all the way to
-// the largest level since that can generate a lot of wasted disk
-// space if the same key space is being repeatedly overwritten.
 static const int kMaxMemCompactLevel = 2;
 
 // Approximate gap in bytes between samples of data read during iteration.

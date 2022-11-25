@@ -6,7 +6,7 @@
 #include <memory>
 #include <string_view>
 
-#include "options.h"
+#include "../util/options.h"
 #include "src/util/common.h"
 namespace yubindb {
 class Iterator {
@@ -208,7 +208,7 @@ void TweLevelIterator::SkipEmptyDataBlocksBackward() {
 void TweLevelIterator::SetDataIterator(std::shared_ptr<Iterator>& data_iter_) {
   if (data_iter.iter() != nullptr) {
     data_iter.Set(data_iter_);
-    spdlog::error("SetDataIterator error");
+    log->error("SetDataIterator error");
   }
 }
 void TweLevelIterator::clear() {

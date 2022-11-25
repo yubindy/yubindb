@@ -1,14 +1,30 @@
-#include "src/util/bloom.h"
 #include <string>
 #include <string_view>
 #include <vector>
-int main(){
-    std::vector<std::string_view> p;
-    BloomFilter sp;
-    for(int i=10;i<20;i++){
-        p.emplace_back(std::to_string(i));
-    }
-    std::string rul;
-    sp.CreateFiler(p.begin(),p.size(),rul);
-    return 0;
+#include "src/util/options.h"
+#include "src/util/bloom.h"
+#include "gtest/gtest.h"
+
+TEST(testbloom, test0) {
+  std::vector<int> start_{0, 1, 3, 7, 9, 10};
+  std::string k{"asdfghjklzggt"};
+  std::string kk{"fresgrtesgvsdv"};
+  start_.emplace_back(k.size());
+  std::vector<std::string_view> pp;
+  yubindb::BloomFilter sp(10);
+  for (int i = 0; i < start_.size() - 1; i++) {
+    const char* p = k.data() + start_[i];
+    size_t length = start_[i + 1] - start_[i];
+    pp.emplace_back(std::string_view(p, length));
+  }
+  std::string rul;
+  sp.CreateFiler(pp.data(), pp.size(), &rul);
+  std::string_view ruls(rul.c_str(), rul.size());
+  for (int i = 0; i < start_.size() - 1; i++) {
+    const char* p = k.data() + start_[i];
+    size_t length = start_[i + 1] - start_[i];
+    EXPECT_TRUE(sp.KeyMayMatch(std::string_view(p, length), ruls));
+    p = kk.data() + start_[i];
+    EXPECT_FALSE(sp.KeyMayMatch(std::string_view(p, length), ruls));
+  }
 }

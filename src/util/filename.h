@@ -5,6 +5,7 @@
 #include <string>
 
 #include "common.h"
+
 namespace yubindb {
 class PosixEnv;
 enum FileType {

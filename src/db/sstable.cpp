@@ -5,7 +5,7 @@
 #include <memory>
 #include <string_view>
 
-#include "../util/cache.h"
+#include "cache.h"
 #include "src/db/block.h"
 #include "src/db/memtable.h"
 #include "src/util/options.h"
@@ -15,7 +15,7 @@ State Table::Open(const Options& options_,
                   std::shared_ptr<Table>& table) {
   table = nullptr;
   if (file_size < Footer::kEncodedLength) {
-    spdlog::error("file is too smart an sstable");
+    log->error("file is too smart an sstable");
     return State::Corruption();
   }
   // char foot_buf[Footer::kEncodedLength];
@@ -102,7 +102,7 @@ std::shared_ptr<Iterator> Table::BlockReader(void* args, const ReadOptions& opt,
   if (block != nullptr) {
     iter = block->NewIterator();
   } else {
-    spdlog::error("new iterator blockreader error");
+    log->error("new iterator blockreader error");
   }
   return iter;
 }

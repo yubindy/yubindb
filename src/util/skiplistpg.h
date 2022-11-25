@@ -7,7 +7,6 @@
 #include <memory>
 #include <string_view>
 
-#include "../db/version_edit.h"
 #include "arena.h"
 #include "key.h"
 #include "skiplist.h"

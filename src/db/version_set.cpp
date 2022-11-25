@@ -117,7 +117,7 @@ State Version::Get(const ReadOptions& op, const Lookey& key, std::string* val,
             return s;
           case kCorrupt:
             s = State::Corruption();
-            spdlog::error("corrupted key for ", user_key);
+            log->error("corrupted key for ", user_key);
             return s;
         }
       }
@@ -500,7 +500,7 @@ void VersionSet::SetupOtherInputs(
       nowversion->GetOverlappFiles(cop->level_ + 1, &new_start, &new_limit,
                                    &expanded1);
       if (expanded1.size() == cop->inputs_[1].size()) {
-        spdlog::info(
+        log->info(
             "Expanding@LEVEL{} FileNum: {} + {} ({} + {} bytes) to Expend "
             "FileNum {} + {} ({} + {} bytes)",
             cop->level_, int(cop->inputs_[0].size()),
@@ -540,7 +540,7 @@ std::shared_ptr<Iterator> VersionSet::MakeInputIterator(Compaction* c) {
         list[num++] = NewTwoLevelIterator(
             std::static_pointer_cast<Iterator>(
                 std::make_shared<LevelFileNumIterator>(&c->inputs_[i])),
-            &GetFileIterator, table_cache, options);
+            &GetFileIterator, table_cache.get(), options);
       }
     }
   }

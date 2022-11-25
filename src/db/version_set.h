@@ -8,11 +8,11 @@
 #include <string_view>
 #include <vector>
 
-#include "../util/cache.h"
 #include "../util/env.h"
-#include "../util/iterator.h"
 #include "../util/key.h"
 #include "../util/options.h"
+#include "cache.h"
+#include "iterator.h"
 #include "src/util/common.h"
 #include "version_edit.h"
 #include "walog.h"

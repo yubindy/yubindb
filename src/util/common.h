@@ -6,10 +6,13 @@
 #include <string_view>
 
 #include "spdlog/spdlog.h"
+#define SPDLOG_ACTIVE_LEVEL \
+  SPDLOG_LEVEL_TRACE  //必须定义这个宏,才能输出文件名和行号
 namespace yubindb {
-
 typedef uint64_t SequenceNum;
 typedef uint32_t uint32_t;
+static std::shared_ptr<spdlog::logger> log; //log
+
 //定长 fix
 //非定长 varint
 //编码
@@ -108,12 +111,8 @@ class State {
   static State Ok() { return State(); }
   static State Notfound() { return State(knotfound); }
   static State Corruption() { return State(kcorruption); }
-  static State NotSupported() {
-    return State(knotsupported);
-  }
-  static State InvalidArgument() {
-    return State(kinvalidargument);
-  }
+  static State NotSupported() { return State(knotsupported); }
+  static State InvalidArgument() { return State(kinvalidargument); }
   static State IoError() { return State(kioerror); }
   bool ok() const { return (state_ == kok); }
 

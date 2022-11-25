@@ -12,10 +12,10 @@ build --strip=never
 #build --repo_env=CC=clang++ if use clang++ skiplist lib has error
 build --cxxopt=-O0
 build -c opt --copt -g
-build --cxxopt="-std=c++17"
+build --cxxopt="-std=c++20"
 
 build --copt=-fsanitize=address
 build --linkopt=-fsanitize=address
 # 一些可用的编译选项
 build --copt=-fno-omit-frame-pointer
-build --copt=-fsanitize-recover=address
+build --copt=-fsanitize-recover=address 
