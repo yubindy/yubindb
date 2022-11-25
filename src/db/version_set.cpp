@@ -267,7 +267,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
       }
 
       // Make sure there is no overlap in levels > 0
-      if (level > 0) {  // TODO level and teir
+      if (level > 0) {
         for (uint32_t i = 1; i < v->files[level].size(); i++) {
           InternalKey& prev_end = v->files[level][i - 1]->largest;
           InternalKey& this_begin = v->files[level][i]->smallest;

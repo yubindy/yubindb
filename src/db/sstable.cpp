@@ -85,7 +85,6 @@ void Table::ReadFilter(std::string_view filter_handle_value) {
 std::shared_ptr<Iterator> Table::BlockReader(void* args, const ReadOptions& opt,
                                              std::string_view index_value) {
   Table* table = reinterpret_cast<Table*>(args);
-  LruCache* block_cache = nullptr;
   std::shared_ptr<Block> block = nullptr;
   CacheHandle* cache_handle = nullptr;
 

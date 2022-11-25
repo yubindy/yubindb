@@ -276,7 +276,6 @@ State DBImpl::MakeRoomForwrite(bool force) {
     } else if (allow_delay &&
                versions_->NumLevelFiles(0) >= config::kL0_SlowdownWrites) {
       // level0的文件数限制超过8,睡眠1ms,等待后台任务执行。写入writer线程向压缩线程转让cpu
-      // Todobetter?
       mutex.unlock();
       ::sleep(1000);
       allow_delay = false;  // sleep too large

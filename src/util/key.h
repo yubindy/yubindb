@@ -156,14 +156,6 @@ class SkiplistKey {  // for skiplist
  public:
   explicit SkiplistKey(const char* p) : str(p) {}
   ~SkiplistKey() = default;
-  // InternalKey&& Key() const {
-  //   uint32_t key_size;
-  //   getsize(str, key_size);
-  //   std::string p;
-  //   p.resize(VarintLength(key_size));
-  //   memcpy(p.data(),str + VarintLength(key_size), key_size);  //TODO '\0'
-  //   return std::move(InternalKey(p));
-  // }
   void Key(InternalKey& p) const {
     uint32_t key_size;
     getsize(str, key_size);
@@ -179,20 +171,6 @@ class SkiplistKey {  // for skiplist
     memcpy(value.data(), str + VarintLength(key_size) + key_size,
            val_size + VarintLength(val_size));
   }
-  // void getInternalKey(std::string* key) const {
-  //   uint32_t key_size;
-  //   getsize(key_size);
-  //   key->assign(str, VarintLength(key_size), key_size + 8);
-  // }
-  // void getValue(std::string* value) const {
-  //   uint32_t key_size;
-  //   getsize(key_size);
-  //   uint32_t val_size;
-  //   getsize(val_size);
-  //   value->assign(str,
-  //                 VarintLength(key_size) + key_size + VarintLength(val_size),
-  //                 val_size);
-  // }
   std::string_view gettrueview() { return std::string_view(str); }
   SkiplistKey& operator=(const SkiplistKey& a) {
     str = a.str;
