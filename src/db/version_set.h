@@ -126,7 +126,7 @@ class VersionSet {
   ~VersionSet() = default;
   State Recover(bool* save_manifest);
   State LogAndApply(VersionEdit* edit, std::mutex* mu);
-  void Finalize(std::unique_ptr<Version>& v);
+  void Finalize(std::shared_ptr<Version>& v);
   bool NeedsCompaction();
   std::shared_ptr<Version> Current() { return nowversion; }
   SequenceNum LastSequence() const { return last_sequence; }
@@ -175,7 +175,7 @@ class VersionSet {
 class Compaction {
  public:
   Compaction(const Options* options, int level);
-  ~Compaction();
+  ~Compaction()=default;
   bool IsTrivialMove();
   std::shared_ptr<FileMate>& Input(int n, int m) { return inputs_[n][m]; }
   int Inputsize(int n) { return inputs_[n].size(); }

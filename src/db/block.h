@@ -3,8 +3,8 @@
 #include <cassert>
 #include <string_view>
 
-#include "iterator.h"
 #include "../util/options.h"
+#include "iterator.h"
 #include "src/util/common.h"
 #include "src/util/key.h"
 namespace yubindb {
@@ -15,7 +15,7 @@ class BlockHandle {
  public:
   enum { kMaxEncodedLength = 10 + 10 };
 
-  BlockHandle();
+  BlockHandle()=default;
   uint64_t offset() const { return offset_; }
   void set_offset(uint64_t offset) { offset_ = offset; }
   uint64_t size() const { return size_; }
@@ -68,6 +68,9 @@ class Blockbuilder {
   std::string last_key;
 };
 class Block {  // stack alloc
+ private:
+  class Iter;
+
  public:
   explicit Block(std::string_view data)
       : data_(data.data()), size_(data.size()) {
@@ -86,7 +89,7 @@ class Block {  // stack alloc
   Block(const Block&) = delete;
   Block& operator=(const Block&) = delete;
 
-  ~Block();
+  ~Block()=default;
   static inline const char* DecodeEntry(const char* p, const char* limit,
                                         uint32_t* shared, uint32_t* non_shared,
                                         uint32_t* value_length) {
@@ -115,15 +118,14 @@ class Block {  // stack alloc
       return nullptr;
     }
     if (NumRestarts() > 0) {
-      return std::make_shared<Iterator>(data_, restart_offset_, NumRestarts());
+      return static_pointer_cast<Iterator>(
+          std::make_shared<Iter>(data_, restart_offset_, NumRestarts()));
     } else {
       return nullptr;
     }
   }
 
  private:
-  class Iter;
-
   inline uint32_t NumRestarts() const {
     assert(size_ >= sizeof(uint32_t));
     return DecodeFixed32(data_ + size_ -

@@ -126,7 +126,7 @@ State TableCache::FindTable(
       tf->file = file;
       tf->table = table;
       *handle =
-          cache->Insert(key, static_pointer_cast<std::shared_ptr<void>>(tf));
+          cache->Insert(key, static_pointer_cast<void>(tf));
     }
   }
   return s;

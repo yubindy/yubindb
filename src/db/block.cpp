@@ -2,7 +2,6 @@
 
 #include <crc32c/crc32c.h>
 #include <snappy.h>
-#include <spdlog/spdlog.h>
 
 #include <cstddef>
 #include <memory>

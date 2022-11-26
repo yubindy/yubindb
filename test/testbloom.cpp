@@ -1,7 +1,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "src/util/options.h"
 #include "src/util/bloom.h"
 #include "gtest/gtest.h"
 

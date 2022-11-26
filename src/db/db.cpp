@@ -1,7 +1,6 @@
 #include "db.h"
 
 #include <memory.h>
-#include <spdlog/logger.h>
 
 #include <atomic>
 #include <cstddef>
@@ -14,7 +13,6 @@
 #include "iterator.h"
 #include "snapshot.h"
 #include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/spdlog-inl.h"
 #include "src/db/filterblock.h"
 #include "src/db/memtable.h"
 #include "src/db/version_set.h"
@@ -27,13 +25,12 @@ class Version;
 class VersionSet;
 
 namespace yubindb {
-void static initlogfile(std::shared_ptr<spdlog::logger> p) {
+void static initlogfile() {
   try {
-    auto logger = spdlog::basic_logger_mt("basic_logger", "logs/basic.log");
-    logger->set_level(spdlog::level::debug);
-    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e][thread %t][%@,%!][%l] : %v");
-    logger->flush_on(spdlog::level::info);
-    p = logger;
+    log = spdlog::basic_logger_mt("basic_logger", "logs/basic.log");
+    log->set_level(spdlog::level::debug);
+    log->set_pattern("[%Y-%m-%d %H:%M:%S.%e][thread %t][%@,%!][%l] : %v");
+    log->flush_on(spdlog::level::info);
   } catch (const spdlog::spdlog_ex& ex) {
     std::cout << "Log init failed: " << ex.what() << std::endl;
   }
@@ -69,25 +66,25 @@ State DBImpl::NewDB() {
   return s;
 }
 DBImpl::DBImpl(const Options* opt, const std::string& dbname)
-    : env(std::make_shared<PosixEnv>()),
+    : dbname(dbname),
       opts(opt),
-      dbname(dbname),
-      table_cache(new TableCache(dbname, opt)),
       db_lock(nullptr),
-      shutting_down_(false),
       mem_(nullptr),
       imm_(nullptr),
       has_imm_(false),
-      logfile(nullptr),
       logfilenum(0),
+      logfile(nullptr),
       logwrite(nullptr),
       batch(std::make_shared<WriteBatch>()),
+      table_cache(new TableCache(dbname, opt)),
+      shutting_down_(false),
       background_compaction_(false),
+      env(std::make_shared<PosixEnv>()),
       versions_(std::make_unique<VersionSet>(dbname, opt, table_cache, env)) {
   if (!bloomfit) {
     bloomfit = std::make_unique<BloomFilter>(10);
   }
-  initlogfile(log);
+  log->info("test1");
 }
 DBImpl::~DBImpl() {
   std::unique_lock<std::mutex> lk(mutex);
@@ -104,7 +101,7 @@ DBImpl::~DBImpl() {
 //目录是否存在、Current文件是否存在等。然后主要通过VersionSet::Recover与DBImpl::RecoverLogFile
 //两个方法，分别恢复其VersionSet的状态与MemTable的状态。
 State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
-  env->CreateDir(dbname);
+  env->CreatpeDir(dbname);
   State s = env->LockFile(LockFileName(dbname), db_lock);
   if (!s.ok()) {
     return s;
@@ -125,6 +122,10 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;
+  initlogfile();
+  if (log) {
+    log->info("test");
+  }
   DBImpl* impl = new DBImpl(&options, name);
   impl->mutex.lock();
   VersionEdit edit;

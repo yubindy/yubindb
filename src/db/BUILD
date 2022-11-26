@@ -8,5 +8,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
          "//src/util:util",
+         "@snappy",
     ],
 )

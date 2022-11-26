@@ -30,14 +30,14 @@ class Table {
   Table(const Table&) = delete;
   Table& operator=(const Table&) = delete;
   std::shared_ptr<Iterator> NewIterator(const ReadOptions& opt);
-  ~Table();
+  explicit Table(std::unique_ptr<Tablestpl>& pl_) { pl.reset(pl_.release()); }
+  ~Table()=default;
 
  private:
   friend class TableCache;
 
   static std::shared_ptr<Iterator> BlockReader(void*, const ReadOptions&, std::string_view);
 
-  explicit Table(std::unique_ptr<Tablestpl>& pl_) { pl.reset(pl_.release()); }
 
   State InternalGet(const ReadOptions&, std::string_view key, void* arg,
                     void (*handle_result)(void* arg, std::string_view k,

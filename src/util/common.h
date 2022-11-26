@@ -6,13 +6,13 @@
 #include <string_view>
 
 #include "spdlog/spdlog.h"
+
 #define SPDLOG_ACTIVE_LEVEL \
   SPDLOG_LEVEL_TRACE  //必须定义这个宏,才能输出文件名和行号
 namespace yubindb {
 typedef uint64_t SequenceNum;
 typedef uint32_t uint32_t;
-static std::shared_ptr<spdlog::logger> log; //log
-
+static std::shared_ptr<spdlog::logger> log = nullptr;  // log
 //定长 fix
 //非定长 varint
 //编码

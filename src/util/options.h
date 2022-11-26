@@ -1,7 +1,5 @@
 #ifndef YUBINDB_OPTIONS_H_
 #define YUBINDB_OPTIONS_H_
-#include <spdlog/common.h>
-#include <spdlog/logger.h>
 
 #include <iostream>
 #include <memory>

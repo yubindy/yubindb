@@ -139,14 +139,16 @@ void Version::GetOverlappFiles(int level, const InternalKey* begin,
   for (size_t i = 0; i < files[i].size(); i++) {
     std::shared_ptr<FileMate> p = files[0][i];
     if (begin != nullptr && cmp(user_begin, p->largest.getusrkeyview()) > 0) {
-    } else if (end != nullptr && cmp(user_end, p->smallest.getusrkeyview()) < 0) {
+    } else if (end != nullptr &&
+               cmp(user_end, p->smallest.getusrkeyview()) < 0) {
     } else {
       inputs->push_back(p);
       if (begin != nullptr && cmp(user_end, p->smallest.getusrkeyview()) < 0) {
         user_begin = p->smallest.getusrkeyview();
         inputs->clear();
         i = 0;
-      } else if (end != nullptr && cmp(p->largest.getusrkeyview(), user_end) > 0) {
+      } else if (end != nullptr &&
+                 cmp(p->largest.getusrkeyview(), user_end) > 0) {
         user_end = p->largest.getusrkeyview();
         inputs->clear();
         i = 0;
@@ -157,10 +159,10 @@ void Version::GetOverlappFiles(int level, const InternalKey* begin,
 VersionSet::VersionSet(const std::string& dbname_, const Options* options,
                        std::shared_ptr<TableCache>& table_cache_,
                        std::shared_ptr<PosixEnv>& env)
-    : env_(env),
-      dbname(dbname_),
+    : dbname(dbname_),
       ops(options),
       table_cache(table_cache_),
+      env_(env),
       next_file_number(2),
       manifest_file_number(0),
       last_sequence(0),
@@ -237,7 +239,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
       levels_[level].added_files->insert(f);
     }
   }
-  void SaveTo(std::unique_ptr<Version>& v) {
+  void SaveTo(std::shared_ptr<Version>& v) {
     BySmallestKey cmper;
     for (int level = 0; level < config::kNumLevels; level++) {
       // 将base_files、added_files排序后存储到Version*
@@ -281,7 +283,7 @@ class VersionSet::Builder {  // helper form edit+version=next version
       }
     }
   }
-  void MaybeAddFile(std::unique_ptr<Version>& v,
+  void MaybeAddFile(std::shared_ptr<Version>& v,
                     int level,  //如果满足，则加入version 的 level filemate pair
                     const std::shared_ptr<FileMate>& f) {
     if (levels_[level].deleted_files.count(f->num) > 0) {
@@ -312,7 +314,7 @@ State VersionSet::LogAndApply(
   edit->SetNextFile(next_file_number);
   edit->SetLastSequence(last_sequence);
 
-  std::unique_ptr<Version> v = std::make_unique<Version>(this);
+  std::shared_ptr<Version> v = std::make_shared<Version>(this);
   {
     Builder builder(this, nowversion);
     builder.Apply(edit);  //+
@@ -347,7 +349,7 @@ State VersionSet::LogAndApply(
     mu->lock();
   }
   if (s.ok()) {
-    nowversion = std::make_shared<Version>(v.release());
+    nowversion = v;
     versionlist.emplace_front(nowversion);
     log_number = edit->log_number;
   } else {
@@ -394,7 +396,7 @@ void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
     }
   }
 }
-void VersionSet::Finalize(std::unique_ptr<Version>& v) {
+void VersionSet::Finalize(std::shared_ptr<Version>& v) {
   int maxlevel = -1;
   double maxscore = -1;
   for (int i = 0; i < config::kNumLevels - 1; i++) {

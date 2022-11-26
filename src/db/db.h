@@ -138,11 +138,10 @@ class DBImpl : public DB {
   std::set<uint64_t> pending_outputs_;
   std::atomic<bool> shutting_down_;
   bool background_compaction_;
+  std::shared_ptr<PosixEnv> env;
   std::unique_ptr<VersionSet> versions_;
   State bg_error;
   // State stats_[kNumLevels];
-  std::shared_ptr<PosixEnv> env;
-  std::shared_ptr<spdlog::logger> log;
 };
 }  // namespace yubindb
 #endif

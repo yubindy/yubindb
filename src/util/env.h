@@ -12,10 +12,8 @@
 #include <set>
 #include <string>
 #include <string_view>
-
 #include "common.h"
 #include "filename.h"
-
 namespace yubindb {
 const int kNumNonTableCacheFiles = 10;
 
@@ -159,8 +157,6 @@ class PosixEnv {
   void Schedule(backwork work);
   void StartThread(void (*thread_main)(void* thread_main_arg),
                    void* thread_main_arg);
-  // State NewLogger(const std::string& filename, std::unique_ptr<Logger>
-  // result);
   bool FileExists(const std::string& filename) {
     return ::access(filename.c_str(), F_OK) == 0;
   }

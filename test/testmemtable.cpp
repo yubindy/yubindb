@@ -1,11 +1,9 @@
 #include <assert.h>
-#include <spdlog/spdlog.h>
 
 #include <iostream>
 #include <string>
 
 #include "src/db/db.h"
-#include "src/db/writebatch.h"
 #include "src/util/common.h"
 int main() {
   yubindb::DB* db;
@@ -20,7 +18,7 @@ int main() {
     key.append(std::to_string(i));
     value.append(std::to_string(i));
     s = db->Put(yubindb::WriteOptions(), key, value);
-    log->info("K: {} V:{}", key, value);
+    spdlog::info("K: {} V:{}", key, value);
   }
   s = db->Put(yubindb::WriteOptions(), "key0", "issb");
   assert(s.ok());

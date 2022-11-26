@@ -1,6 +1,5 @@
 #include "sstable.h"
 
-#include <spdlog/spdlog.h>
 
 #include <memory>
 #include <string_view>

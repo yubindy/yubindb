@@ -4,7 +4,6 @@
 #include <string_view>
 
 #include "../util/common.h"
-#include "spdlog/spdlog.h"
 namespace yubindb {
 
 class Memtable;  //
