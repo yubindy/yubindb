@@ -29,7 +29,7 @@ class BlockHandle {
     if (GetVarint64(input, &offset_) && GetVarint64(input, &size_)) {
       return State::Ok();
     } else {
-      log->error("bad block handle");
+      mlog->error("bad block handle");
       return State::Corruption();
     }
   }
@@ -114,7 +114,7 @@ class Block {  // stack alloc
   size_t size() const { return size_; }
   std::shared_ptr<Iterator> NewIterator() {
     if (size_ < sizeof(uint32_t)) {
-      log->error("size is small");
+      mlog->error("size is small");
       return nullptr;
     }
     if (NumRestarts() > 0) {
@@ -168,7 +168,7 @@ class Block::Iter : public Iterator {
     p = DecodeEntry(p, limit, &shared, &non_shared, &value_len);
     if (p == nullptr || key_.size() < shared) {
       key_.clear();
-      log->error("bad entry in block nowoffset {} key {}", current_, key_);
+      mlog->error("bad entry in block nowoffset {} key {}", current_, key_);
       return false;
     } else {
       key_.resize(shared);
@@ -230,7 +230,7 @@ class Block::Iter : public Iterator {
           DecodeEntry(data_ + region_offset, data_ + restarts_, &shared,
                       &non_shared, &value_length);
       if (key_ptr == nullptr || (shared != 0)) {
-        log->error("doing error in this");
+        mlog->error("doing error in this");
         return;
       }
       std::string_view mid_key(key_ptr, non_shared);

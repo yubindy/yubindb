@@ -24,7 +24,7 @@ State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   const uint32_t crc = DecodeFixed32(content.data() + n + 1);
   const uint32_t truecrc = crc32c::Crc32c(content.data(), n + 1);
   if (crc != truecrc) {
-    log->error("block checksum mismatch");
+    mlog->error("block checksum mismatch");
     return State::Corruption();
   }
   switch (*(content.data() + n)) {
@@ -34,19 +34,19 @@ State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
     case kSnappyCompression: {
       size_t len = 0;
       if (snappy::GetUncompressedLength(content.data(), n, &len)) {
-        log->error("block checksum mismatch");
+        mlog->error("block checksum mismatch");
         return State::Corruption();
       }
       std::string* ptr = new std::string();
       if (!snappy::Uncompress(content.data(), n, ptr)) {
-        log->error("block checksum mismatch");
+        mlog->error("block checksum mismatch");
         return State::Corruption();
       }
       *result = std::string_view(ptr->data(), len);
       break;
     }
     default:
-      log->error("block type");
+      mlog->error("block type");
       return State::Corruption();
       return State::Ok();
   }

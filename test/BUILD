@@ -6,7 +6,13 @@ cc_binary(
         "//src/util:util",
     ],
 )
-
+cc_binary(
+    name = "log",
+    srcs = ["testlog.cpp"],
+    deps = [
+        "//@spdlog",
+    ],
+)
 cc_test(
     name = "bloom",
     srcs = ["testbloom.cpp"],

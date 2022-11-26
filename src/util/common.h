@@ -1,18 +1,15 @@
 #ifndef YUBINDB_COMMON_H_
 #define YUBINDB_COMMON_H_
 #include <memory.h>
+#include <stdint.h>
 
 #include <cstddef>
+#include <string>
 #include <string_view>
 
-#include "spdlog/spdlog.h"
-
-#define SPDLOG_ACTIVE_LEVEL \
-  SPDLOG_LEVEL_TRACE  //必须定义这个宏,才能输出文件名和行号
+#include "loger.h"
 namespace yubindb {
-typedef uint64_t SequenceNum;
-typedef uint32_t uint32_t;
-static std::shared_ptr<spdlog::logger> log = nullptr;  // log
+using SequenceNum = uint64_t;
 //定长 fix
 //非定长 varint
 //编码
@@ -42,13 +39,13 @@ char* EncodeVarint64(char* dst, uint64_t value);
 
 inline void EncodeFixed32(char* dst, uint32_t value) {
   uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
-  std::memcpy(buffer, &value, sizeof(uint32_t));
+  ::memcpy(buffer, &value, sizeof(uint32_t));
   return;
 }
 
 inline void EncodeFixed64(char* dst, uint64_t value) {
   uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
-  std::memcpy(buffer, &value, sizeof(uint64_t));
+  ::memcpy(buffer, &value, sizeof(uint64_t));
   return;
 }
 
@@ -56,14 +53,14 @@ inline uint32_t DecodeFixed32(const char* ptr) {
   const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
 
   uint32_t result;
-  std::memcpy(&result, buffer, sizeof(uint32_t));
+  ::memcpy(&result, buffer, sizeof(uint32_t));
   return result;
 }
 
 inline uint64_t DecodeFixed64(const char* ptr) {
   const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
   uint64_t result;
-  std::memcpy(&result, buffer, sizeof(uint64_t));
+  ::memcpy(&result, buffer, sizeof(uint64_t));
   return result;
 }
 

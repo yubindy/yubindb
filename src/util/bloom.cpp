@@ -56,12 +56,12 @@ bool BloomFilter::KeyMayMatch(const std::string_view& key,
   for (size_t j = 0; j < hash_size; j++) {
     const uint32_t bitpos = h % bits;
     if ((array[bitpos / 8] & (1 << (bitpos % 8))) == 0) {
-      log->info("Bloom isnot exest {}", key);
+      mlog->info("Bloom isnot exest {}", key);
       return false;
     }
     h += delta;
   }
-  log->info("Bloom exest {}", key);
+  mlog->info("Bloom exest {}", key);
   return true;
 }
 

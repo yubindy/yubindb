@@ -38,7 +38,7 @@ State walWriter::Appendrecord(std::string_view str) {
 State walWriter::Flushphyrecord(RecordType type, const char* buf_,
                                 uint32_t size) {
   assert(block_offset + kHeaderSize + size <= kBlockSize);
-  log->info("wal write flushrecord type: {} msg: {} size: {}", type, buf_,
+  mlog->info("wal write flushrecord type: {} msg: {} size: {}", type, buf_,
                size);
   char buf[kHeaderSize];
   buf[4] = (size & 0xff);

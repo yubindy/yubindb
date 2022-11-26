@@ -35,7 +35,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
   SequenceNum now_seq = Sequence();
   int now_cnt=0;
   if (ptr.size() < Headsize) {
-    log->error("malformed WriteBatch (too small)");
+    mlog->error("malformed WriteBatch (too small)");
   }
   ptr.remove_prefix(Headsize);
   std::string_view key, value;
@@ -49,31 +49,31 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         if (GetLengthPrefixedview(&ptr, &key) &&
             GetLengthPrefixedview(&ptr, &value)) {
           memtable->Add(now_seq, kTypeValue, key, value);
-          log->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
+          mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                         kTypeValue, key, value);
         } else {
-          log->error("bad WriteBatch Put");
+          mlog->error("bad WriteBatch Put");
           return State::Corruption();
         }
         break;
       case kTypeDeletion:
         if (GetLengthPrefixedview(&ptr, &key)) {
           memtable->Add(now_seq, kTypeValue, key, std::string_view());
-          log->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
+          mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                         kTypeDeletion, key, value);
         } else {
-          log->error("bad WriteBatch Del");
+          mlog->error("bad WriteBatch Del");
           return State::Corruption();
         }
         break;
       default:
-        log->error("unknown WriteBatch type");
+        mlog->error("unknown WriteBatch type");
         return State::Corruption();
     }
     seq++;
   }
   if (now_cnt != Count()) {
-    log->error("WriteBatch has wrong count has {} should {}", now_cnt,
+    mlog->error("WriteBatch has wrong count has {} should {}", now_cnt,
                   Count());
     return State::Corruption();
   } else {

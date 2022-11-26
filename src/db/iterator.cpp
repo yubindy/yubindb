@@ -9,7 +9,7 @@ std::shared_ptr<Iterator> GetFileIterator(void* arg, const ReadOptions& options,
                                           std::string_view file_value) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
   if (file_value.size() != 16) {
-    log->error("FileReader invoked with unexpected value");
+    mlog->error("FileReader invoked with unexpected value");
     return nullptr;
   } else {
     return cache->NewIterator(options, DecodeFixed64(file_value.data()),
@@ -71,7 +71,7 @@ void TweLevelIterator::SkipEmptyDataBlocksBackward() {
 void TweLevelIterator::SetDataIterator(std::shared_ptr<Iterator>& data_iter_) {
   if (data_iter.iter() != nullptr) {
     data_iter.Set(data_iter_);
-    log->error("SetDataIterator error");
+    mlog->error("SetDataIterator error");
   }
 }
 void TweLevelIterator::clear() {

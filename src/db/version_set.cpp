@@ -117,7 +117,7 @@ State Version::Get(const ReadOptions& op, const Lookey& key, std::string* val,
             return s;
           case kCorrupt:
             s = State::Corruption();
-            log->error("corrupted key for ", user_key);
+            mlog->error("corrupted key for ", user_key);
             return s;
         }
       }
@@ -502,7 +502,7 @@ void VersionSet::SetupOtherInputs(
       nowversion->GetOverlappFiles(cop->level_ + 1, &new_start, &new_limit,
                                    &expanded1);
       if (expanded1.size() == cop->inputs_[1].size()) {
-        log->info(
+        mlog->info(
             "Expanding@LEVEL{} FileNum: {} + {} ({} + {} bytes) to Expend "
             "FileNum {} + {} ({} + {} bytes)",
             cop->level_, int(cop->inputs_[0].size()),

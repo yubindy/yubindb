@@ -196,7 +196,8 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
 }
 State PosixEnv::CreateDir(const std::string& dirname) {
   if (::mkdir(dirname.c_str(), 0755) != 0) {
-    yubindb::log->warn("warn createdir: dirname: {} err: {}", dirname, strerror(errno));
+    yubindb::log->warn("warn createdir: dirname: {} err: {}", dirname,
+                       strerror(errno));
     return State::IoError();
   }
   return State::Ok();
@@ -207,7 +208,7 @@ State PosixEnv::GetChildren(const std::string& directory_path,
   ::DIR* dir = ::opendir(directory_path.c_str());
   if (dir == nullptr) {
     yubindb::log->error("error opendir: dirname: {} err: {}", directory_path,
-               strerror(errno));
+                        strerror(errno));
     return State::IoError();
   }
   struct ::dirent* entry;
@@ -244,7 +245,7 @@ State PosixEnv::LockFile(const std::string& filename,
   int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
     // log->error("error open : filename: {} err: {}", filename,
-    //               strerror(errno));
+    //                strerror(errno));
     return State::IoError();
   }
   {
