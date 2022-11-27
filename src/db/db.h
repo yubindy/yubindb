@@ -81,6 +81,7 @@ class DBImpl : public DB {
           outfile(nullptr),
           builder(nullptr),
           total_bytes(0) {}
+    ~CompactionState() { delete builder; }
     struct Output {
       uint64_t number;
       uint64_t file_size;
@@ -114,7 +115,7 @@ class DBImpl : public DB {
   State FinishCompactionOutputFile(CompactionState* compact,
                                    std::shared_ptr<Iterator>& input);
   State OpenCompactionOutputFile(CompactionState* compact);
-  State InstallCompactionResults(CompactionState* compact);
+  State InstallCompactionResults(std::unique_ptr<CompactionState>& compact);
   const std::string dbname;
   const Options* opts;
   std::unique_ptr<FileLock> db_lock;

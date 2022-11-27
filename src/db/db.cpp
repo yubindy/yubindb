@@ -269,7 +269,7 @@ WriteBatch* DBImpl::BuildBatchGroup(DBImpl::Writer** last_writer) {
 State DBImpl::MakeRoomForwrite(bool force) {
   bool allow_delay = !force;
   State s;
-  std::unique_lock<std::mutex> lks(mutex,std::adopt_lock);
+  std::unique_lock<std::mutex> lks(mutex, std::adopt_lock);
   while (true) {
     if (!bg_error.ok()) {
       s = bg_error;
@@ -414,7 +414,8 @@ void DBImpl::BackgroundCompaction() {  // doing compaction
     c->Edit()->AddFile(c->Level(), cf->num, cf->file_size, cf->smallest,
                        cf->largest);
     s = versions_->LogAndApply(c->Edit(), &mutex);
-    mlog->info("Moved {} to level-{} bytes", cf->num, c->Level(), cf->file_size);
+    mlog->info("Moved {} to level-{} bytes", cf->num, c->Level(),
+               cf->file_size);
   } else {
     std::unique_ptr<CompactionState> cpst =
         std::make_unique<CompactionState>(c.get());
@@ -493,8 +494,8 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
 }
 State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   mlog->info("start Compacion form Level {} {} to  Level {} to {}",
-            compact->comp->Level(), compact->comp->Inputsize(0),
-            compact->comp->Level() + 1, compact->comp->Inputsize(1));
+             compact->comp->Level(), compact->comp->Inputsize(0),
+             compact->comp->Level() + 1, compact->comp->Inputsize(1));
   if (snapshots.empty()) {
     compact->small_snap = versions_->LastSequence();  //当前seq
   } else {
@@ -577,6 +578,9 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   if (s.ok()) {
     s = iter->state();
   }
+  if (s.ok()) {
+    s = InstallCompactionResults(compact);  // 将新生成的sst 加入到Version中
+  }
 }
 State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
                                          std::shared_ptr<Iterator>& input) {
@@ -608,5 +612,38 @@ State DBImpl::FinishCompactionOutputFile(CompactionState* compact,
     s = iter->state();
   }
   return s;
+}
+State DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
+  assert(compact != nullptr);
+  assert(compact->builder == nullptr);
+  uint64_t file_number;
+  {
+    mutex.lock();
+    file_number = versions_->NewFileNumber();
+    pending_outputs_.insert(file_number);
+    CompactionState::Output out;
+    out.number = file_number;
+    out.smallest.clear();
+    out.largest.clear();
+    compact->oupts.push_back(out);
+    mutex.unlock();
+  }
+  std::string fname = TableFileName(dbname, file_number);
+  State s = env->NewWritableFile(fname, compact->outfile);
+  if (s.ok()) {
+    compact->builder = new Tablebuilder(*opts, compact->outfile);
+  }
+  return s;
+}
+State DBImpl::InstallCompactionResults(
+    std::unique_ptr<CompactionState>& compact) {  //新生成的sst 加入到Version中
+  compact->comp->AddInputDeletions(compact->comp->Edit());
+  int level = compact->comp->Level();
+  for (int i = 0; i < level; i++) {
+    const CompactionState::Output& outs = compact->oupts[i];
+    compact->comp->Edit()->AddFile(level + 1, outs.number, outs.file_size,
+                                         outs.smallest, outs.largest);
+  }
+  return versions_->LogAndApply(compact->comp->Edit(), &mutex);
 }
 }  // namespace yubindb

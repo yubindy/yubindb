@@ -2,6 +2,7 @@
 
 #include <crc32c/crc32c.h>
 #include <snappy.h>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -77,7 +78,8 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
              val_size);
       return true;
     } else if ((found->key.Getag() & 0xf) == kTypeDeletion) {
-      return false;
+      *s = State::Notfound();
+      return true;
     }
   } else {
     return false;
@@ -96,9 +98,9 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
   meta.largest = p->key;
   State s = builder->Finish();
   return s;
-
 }
-void Tablebuilder::Add(const std::string_view& key, const std::string_view& val) {
+void Tablebuilder::Add(const std::string_view& key,
+                       const std::string_view& val) {
   assert(!closed);
   if (pending_index_entry) {
     assert(data_block.empty());

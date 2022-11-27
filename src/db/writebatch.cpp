@@ -16,7 +16,11 @@ void WriteBatch::Put(std::string_view key, std::string_view value) {
   PutLengthPrefixedview(&mate, value);
 }
 
-void WriteBatch::Delete(std::string_view key) {}
+void WriteBatch::Delete(std::string_view key) {
+  SetCount(Count() + 1);
+  mate.push_back(static_cast<char>(kTypeDeletion));
+  PutLengthPrefixedview(&mate, key);
+}
 
 void WriteBatch::Append(WriteBatch* source) {
   SetCount(source->Count() + Count());
@@ -33,7 +37,7 @@ void WriteBatch::SetSequence(SequenceNum seq) {
 State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
   std::string_view ptr(mate);
   SequenceNum now_seq = Sequence();
-  int now_cnt=0;
+  int now_cnt = 0;
   if (ptr.size() < Headsize) {
     mlog->error("malformed WriteBatch (too small)");
   }
@@ -50,7 +54,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
             GetLengthPrefixedview(&ptr, &value)) {
           memtable->Add(now_seq, kTypeValue, key, value);
           mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
-                        kTypeValue, key, value);
+                      kTypeValue, key, value);
         } else {
           mlog->error("bad WriteBatch Put");
           return State::Corruption();
@@ -60,7 +64,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         if (GetLengthPrefixedview(&ptr, &key)) {
           memtable->Add(now_seq, kTypeValue, key, std::string_view());
           mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
-                        kTypeDeletion, key, value);
+                      kTypeDeletion, key, value);
         } else {
           mlog->error("bad WriteBatch Del");
           return State::Corruption();
@@ -74,7 +78,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
   }
   if (now_cnt != Count()) {
     mlog->error("WriteBatch has wrong count has {} should {}", now_cnt,
-                  Count());
+                Count());
     return State::Corruption();
   } else {
     return State::Ok();

@@ -1,9 +1,10 @@
-cc_binary(
+cc_test(
     name = "memtable",
     srcs = ["testmemtable.cpp"],
     deps = [
         "//src/db:db",
         "//src/util:util",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 cc_binary(
