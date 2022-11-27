@@ -169,7 +169,10 @@ VersionSet::VersionSet(const std::string& dbname_, const Options* options,
       log_number(0),
       descriptor_file(nullptr),
       descriptor_log(nullptr),
-      nowversion(nullptr) {}
+      nowversion(nullptr) {
+  nowversion = std::make_shared<Version>(this);
+  versionlist.emplace_front(nowversion);
+}
 class VersionSet::Builder {  // helper form edit+version=next version
  private:
   struct BySmallestKey {  // sort small of class

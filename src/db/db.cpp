@@ -92,10 +92,11 @@ DBImpl::~DBImpl() {
 //两个方法，分别恢复其VersionSet的状态与MemTable的状态。
 State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   env->CreateDir(dbname);
-  State s = env->LockFile(LockFileName(dbname), db_lock);
-  if (!s.ok()) {
-    return s;
-  }
+  // State s = env->LockFile(LockFileName(dbname), db_lock);
+  // if (!s.ok()) {
+  //   return s;
+  // }
+  State s;
   if (!env->FileExists(CurrentFileName(dbname))) {
     s = NewDB();
     if (!s.ok()) {
@@ -112,9 +113,6 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;
-  if (log) {
-    mlog->info("test");
-  }
   DBImpl* impl = new DBImpl(&options, name);
   impl->mutex.lock();
   VersionEdit edit;
@@ -271,7 +269,7 @@ WriteBatch* DBImpl::BuildBatchGroup(DBImpl::Writer** last_writer) {
 State DBImpl::MakeRoomForwrite(bool force) {
   bool allow_delay = !force;
   State s;
-  std::unique_lock<std::mutex> lks(mutex);
+  std::unique_lock<std::mutex> lks(mutex,std::adopt_lock);
   while (true) {
     if (!bg_error.ok()) {
       s = bg_error;
@@ -279,7 +277,7 @@ State DBImpl::MakeRoomForwrite(bool force) {
     } else if (allow_delay &&
                versions_->NumLevelFiles(0) >= config::kL0_SlowdownWrites) {
       // level0的文件数限制超过8,睡眠1ms,等待后台任务执行。写入writer线程向压缩线程转让cpu
-      mutex.unlock();
+      lks.unlock();
       ::sleep(1000);
       allow_delay = false;  // sleep too large
       lks.unlock();

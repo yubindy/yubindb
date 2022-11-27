@@ -15,8 +15,6 @@ void Loger::Setlog(const std::string& db_name) {
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e][thread %t][%@,%!][%l] : %v");
     logger->flush_on(spdlog::level::info);
     spdlog::flush_every(std::chrono::seconds(1));
-    // then spdloge::get("logger_name")
-    // spdlog::register_logger(logger);
   } catch (std::exception& ex) {
     std::cout << ex.what() << std::endl;
     exit(-1);

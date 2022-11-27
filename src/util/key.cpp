@@ -8,12 +8,12 @@ uint64_t InternalKey::parser(SequenceNum num, Valuetype type) {
 //| Size| User key (string) | sequence number (7 bytes) | value type
 //(1 byte) |
 
-Lookey::Lookey(std::string_view key_, SequenceNum seq_) { //ISerror should fix by internal key
+Lookey::Lookey(std::string_view key_,
+               SequenceNum seq_) {  // ISerror should fix by internal key
   size_t usize = key_.size();
   size_t needed = usize + 13;
   char* str;
-
-  if (needed <= sizeof(key_)) {
+  if (needed <= sizeof(space)) {
     str = space;
   } else {
     str = new char[needed];

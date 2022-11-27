@@ -123,7 +123,9 @@ class Lookey {
   Lookey(std::string_view key_, SequenceNum seq_);
   std::string_view usrkey();
 
-  ~Lookey() = default;
+  ~Lookey() {
+    if (start != space) delete[] start;
+  }
   std::string_view Internalkey() const {
     return std::string_view(kstart, end - kstart);
   }

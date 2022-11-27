@@ -1,7 +1,6 @@
 #ifndef YUBINDB_LOGER_H
 #define YUBINDB_LOGER_H
 
-#define SPDLOG_FMT_EXTERNAL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include <spdlog/spdlog.h>
 

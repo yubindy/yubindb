@@ -10,7 +10,7 @@ cc_binary(
     name = "log",
     srcs = ["testlog.cpp"],
     deps = [
-        "//@spdlog",
+        "//src/util:loginit",
     ],
 )
 cc_test(

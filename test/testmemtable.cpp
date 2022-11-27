@@ -29,5 +29,10 @@ int main() {
     assert(status.ok());
     std::cout << value << std::endl;
   }
+  db->Delete(yubindb::WriteOptions(), "key0"); //iserror
+  s = db->Get(yubindb::ReadOptions(), "key0", &value);
+  assert(status.ok());
+  std::cout << value << std::endl;
+  delete db;
   return 0;
 }

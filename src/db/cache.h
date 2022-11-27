@@ -66,7 +66,7 @@ class ShareCache {
 class TableCache {  //(SSTable.file_number)->(TableAndFile*)
  public:
   explicit TableCache(std::string_view dbname, const Options* opt);
-  ~TableCache() = default;
+  ~TableCache() { delete env; }
   std::shared_ptr<Iterator> NewIterator(
       const ReadOptions& options, uint64_t file_number, uint64_t file_size,
       std::shared_ptr<Table> tableptr = nullptr);

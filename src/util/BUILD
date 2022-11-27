@@ -13,3 +13,18 @@ cc_library(
          "@skiplist",
     ],
 )
+cc_library(
+    name = "loginit",
+    srcs = glob([
+        "loger.cpp",
+        "loger.h",
+        "env.cpp",
+        "env.h",
+        "common*",
+        "filename*",
+    ]),
+    visibility = ["//visibility:public"],
+    deps = [
+         "@spdlog",
+    ],
+)

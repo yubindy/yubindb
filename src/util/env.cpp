@@ -12,7 +12,6 @@
 
 #include "filename.h"
 namespace yubindb {
-extern std::shared_ptr<spdlog::logger> log;
 State WritableFile::Append(std::string_view ptr) {
   return Append(ptr.data(), ptr.size());
 }
@@ -79,8 +78,8 @@ State WritableFile::Close() {
   errno = 0;
   const int result = ::close(fd);
   if (result < 0 && s.ok()) {
-    log->error("error close: filename: {} err: {}", filestr.c_str(),
-               strerror(errno));
+    mlog->error("error close: filename: {} err: {}", filestr.c_str(),
+                strerror(errno));
     s = State::IoError();
   }
   fd = -1;
@@ -93,7 +92,7 @@ State WritableFile::Flush() {
   while (size > 0) {
     n = ::write(fd, buf_, offset);
     if (n < 0) {
-      log->error("error write: filename: {} err: {}", Name(), strerror(errno));
+      mlog->error("error write: filename: {} err: {}", Name(), strerror(errno));
       if (errno == EINTR) {
         continue;
       }
@@ -116,22 +115,22 @@ State WritableFile::Sync(int fd, const std::string& pt) {
   if (::fsync(fd) == 0) {
     return State::Ok();
   }
-  log->error("error sync: filename: {} err: {}", pt.c_str(), strerror(errno));
+  mlog->error("error sync: filename: {} err: {}", pt.c_str(), strerror(errno));
   return State::IoError();
 }
 State WritableFile::SyncDirmainifset() {
   int fd = ::open(dirstr.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
-    log->error("error open: filename: {} err: {}", dirstr.c_str(),
-               strerror(errno));
+    mlog->error("error open: filename: {} err: {}", dirstr.c_str(),
+                strerror(errno));
     ::close(fd);
     return State::IoError();
   } else {
     if (::fsync(fd) == 0) {
       return State::Ok();
     }
-    log->error("error SyncDirmainifset: filename: {} err: {}", dirstr.c_str(),
-               strerror(errno));
+    mlog->error("error SyncDirmainifset: filename: {} err: {}", dirstr.c_str(),
+                strerror(errno));
     return State::IoError();
   }
   return State::Ok();
@@ -141,7 +140,7 @@ State PosixEnv::NewReadFile(const std::string& filename,
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     result = nullptr;
-    log->error("error open: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error open: filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   result = std::make_unique<ReadFile>(filename, fd);
@@ -152,7 +151,7 @@ State PosixEnv::NewRandomAccessFile(const std::string& filename,
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     result = nullptr;
-    log->error("error open: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error open: filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   result = std::make_shared<RandomAccessFile>(filename, fd);
@@ -164,7 +163,7 @@ State PosixEnv::NewWritableFile(const std::string& filename,
       ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
     result = nullptr;
-    log->error("error open: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error open: filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   result = std::make_shared<WritableFile>(filename, fd);
@@ -176,7 +175,7 @@ State PosixEnv::NewWritableFile(const std::string& filename,
       ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
     result = nullptr;
-    log->error("error open: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error open: filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   result = std::make_unique<WritableFile>(filename, fd);
@@ -188,7 +187,7 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
       ::open(filename.c_str(), O_APPEND | O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
     result = nullptr;
-    log->error("error open: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error open: filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   result = std::make_unique<WritableFile>(filename, fd);
@@ -196,8 +195,7 @@ State PosixEnv::NewAppendableFile(const std::string& filename,
 }
 State PosixEnv::CreateDir(const std::string& dirname) {
   if (::mkdir(dirname.c_str(), 0755) != 0) {
-    yubindb::log->warn("warn createdir: dirname: {} err: {}", dirname,
-                       strerror(errno));
+    mlog->warn("warn createdir: dirname: {} err: {}", dirname, strerror(errno));
     return State::IoError();
   }
   return State::Ok();
@@ -207,8 +205,8 @@ State PosixEnv::GetChildren(const std::string& directory_path,
   result->clear();
   ::DIR* dir = ::opendir(directory_path.c_str());
   if (dir == nullptr) {
-    yubindb::log->error("error opendir: dirname: {} err: {}", directory_path,
-                        strerror(errno));
+    mlog->error("error opendir: dirname: {} err: {}", directory_path,
+                strerror(errno));
     return State::IoError();
   }
   struct ::dirent* entry;
@@ -220,22 +218,23 @@ State PosixEnv::GetChildren(const std::string& directory_path,
 }
 State PosixEnv::DeleteDir(const std::string& dirname) {
   if (::rmdir(dirname.c_str()) != 0) {
-    log->error("error delterdir: dirname: {} err: {}", dirname,
-               strerror(errno));
+    mlog->error("error delterdir: dirname: {} err: {}", dirname,
+                strerror(errno));
     return State::IoError();
   }
   return State::Ok();
 }
 State PosixEnv::DeleteFile(const std::string& filename) {
   if (::unlink(filename.c_str()) != 0) {
-    log->error("error unlink: filename: {} err: {}", filename, strerror(errno));
+    mlog->error("error unlink: filename: {} err: {}", filename,
+                strerror(errno));
     return State::IoError();
   }
   return State::Ok();
 }
 State PosixEnv::RenameFile(const std::string& from, const std::string& to) {
   if (::rename(from.c_str(), to.c_str()) != 0) {
-    log->error("error rename: filename: {} err: {}", from, strerror(errno));
+    mlog->error("error rename: filename: {} err: {}", from, strerror(errno));
     return State::IoError();
   }
   return State::Ok();
@@ -244,8 +243,7 @@ State PosixEnv::LockFile(const std::string& filename,
                          std::unique_ptr<FileLock>& lock) {
   int fd = ::open(filename.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
   if (fd < 0) {
-    // log->error("error open : filename: {} err: {}", filename,
-    //                strerror(errno));
+    mlog->error("error open : filename: {} err: {}", filename, strerror(errno));
     return State::IoError();
   }
   {
@@ -265,8 +263,8 @@ State PosixEnv::LockFile(const std::string& filename,
     filemutex.lock();
     filelock.erase(filename);
     filemutex.unlock();
-    log->error("error fcntl : filename: lock+{} err: {}", filename,
-               strerror(errno));
+    mlog->error("error fcntl : filename: lock+{} err: {}", filename,
+                strerror(errno));
     return State::IoError();
   }
 
@@ -286,8 +284,8 @@ State PosixEnv::UnlockFile(std::unique_ptr<FileLock>& lock) {
     filemutex.lock();
     filelock.erase((*lock).filename_);
     filemutex.unlock();
-    log->error("error fcntl : filename: {} err: {}", (*lock).filename_,
-               strerror(errno));
+    mlog->error("error fcntl : filename: {} err: {}", (*lock).filename_,
+                strerror(errno));
     return State::IoError();
   }
   lock.reset();
