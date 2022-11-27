@@ -3,11 +3,13 @@
 #include <vector>
 #include "src/util/bloom.h"
 #include "gtest/gtest.h"
+#include "src/util/loger.h"
 
 TEST(testbloom, test0) {
   std::vector<int> start_{0, 1, 3, 7, 9, 10};
   std::string k{"asdfghjklzggt"};
   std::string kk{"fresgrtesgvsdv"};
+  yubindb::mlogger.Setlog("/tmp/testdb");
   start_.emplace_back(k.size());
   std::vector<std::string_view> pp;
   yubindb::BloomFilter sp(10);

@@ -132,8 +132,8 @@ class PosixEnv {
   typedef std::function<void()> backwork;
   PosixEnv() = default;
   ~PosixEnv() {
-    static char msg[] = "PosixEnv destroyed!\n";
-    std::fwrite(msg, 1, sizeof(msg), stderr);
+    //static char msg[] = "PosixEnv destroyed!\n";
+    //std::fwrite(msg, 1, sizeof(msg), stderr);
   }
   State NewReadFile(const std::string& filename,
                     std::unique_ptr<ReadFile>& result);

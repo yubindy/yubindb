@@ -153,7 +153,7 @@ class TweLevelIterator : public Iterator {
   IteratorWrapper data_iter;
   std::string data_block_handle;
 };
-static std::shared_ptr<Iterator> GetFileIterator(void* arg,
+std::shared_ptr<Iterator> GetFileIterator(void* arg,
                                                  const ReadOptions& options,
                                                  std::string_view file_value);
 std::shared_ptr<Iterator> NewTwoLevelIterator(

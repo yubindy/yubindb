@@ -62,7 +62,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         break;
       case kTypeDeletion:
         if (GetLengthPrefixedview(&ptr, &key)) {
-          memtable->Add(now_seq, kTypeValue, key, std::string_view());
+          memtable->Add(now_seq, kTypeDeletion, key, std::string_view());
           mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                       kTypeDeletion, key, value);
         } else {

@@ -569,6 +569,13 @@ bool Compaction::IsTrivialMove() {
           TotalFileSize(grandparents_) <=
               input_version_->vset->ops->max_file_size * 10);
 }
+void Compaction::AddInputDeletions(VersionEdit* edit) {
+  for (int which = 0; which < 2; which++) {
+    for (size_t i = 0; i < inputs_[which].size(); i++) {
+      edit->DeleteFile(level_ + which, inputs_[which][i]->num);
+    }
+  }
+}
 bool Compaction::IsBaseLevelForKey(std::string_view user_key) {
   for (int lvl = level_ + 2; lvl < config::kNumLevels; lvl++) {
     const std::vector<std::shared_ptr<FileMate>>& files =
