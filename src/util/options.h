@@ -30,7 +30,7 @@ struct Options {
 
   int block_restart_interval = 16;
 
-  uint64_t write_buffer_size = 4 * 1024 * 1024;  // 4M
+  uint64_t write_buffer_size = 8 * 1024;  // 4M,TODO should 4*1024*1024 
   // todo immtable queue
 
   uint32_t max_file_size = 2 * 1024 * 1024;

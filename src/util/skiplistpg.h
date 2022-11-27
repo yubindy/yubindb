@@ -75,13 +75,12 @@ class Skiplist {  // skiplist package
   State Flushlevel0(FileMate& meta);
   bool GreaterEqual(SkiplistKey& a, SkiplistKey& b);
   bool KeyIsAfterNode(SkiplistKey& key, node* n) const;
-  size_t Getsize() { return arena->MemoryUsage() + size; }
+  size_t Getsize() { return arena->MemoryUsage(); }
 
  private:
   skiplist_raw table;
   std::shared_ptr<Arena> arena;  // for new and delete
   std::vector<std::unique_ptr<node>> nodes;
-  std::atomic<size_t> size;
 };
 }  // namespace yubindb
 #endif

@@ -7,12 +7,9 @@ namespace yubindb {
 void Skiplist::Insert(SkiplistKey skiplistkv) {
   std::unique_ptr<node> p = std::make_unique<node>();
   skiplist_init_node(&p->snode);
-  size_t nodesize(sizeof(node));
   skiplistkv.Key(p->key);
   skiplistkv.Val(p->val);
-  nodesize += p->val.size() + p->key.size();
   skiplist_insert(&table, &p->snode);
-  size += nodesize;
   nodes.emplace_back(std::move(p));
 }
 bool Skiplist::GreaterEqual(SkiplistKey& a, SkiplistKey& b) {

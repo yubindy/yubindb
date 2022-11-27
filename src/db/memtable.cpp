@@ -79,7 +79,8 @@ bool Memtable::Get(const Lookey& key, std::string* value, State* s) {
     } else if ((found->key.Getag() & 0xf) == kTypeDeletion) {
       *s = State::Notfound();
     }
-    mlog->debug("Get Key {} Value {} Seq {} Type {}",keys.getusrkeyview(),*value,found->key.Getag()>>8,found->key.Getag() & 0xf);
+    mlog->debug("Get Key {} Value {} Seq {} Type {}", keys.getusrkeyview(),
+                *value, found->key.Getag() >> 8, found->key.Getag() & 0xf);
     return true;
   } else {
     return false;

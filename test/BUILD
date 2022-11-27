@@ -7,6 +7,15 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+cc_test(
+    name = "major",
+    srcs = ["testmajor.cpp"],
+    deps = [
+        "//src/db:db",
+        "//src/util:util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 cc_binary(
     name = "log",
     srcs = ["testlog.cpp"],

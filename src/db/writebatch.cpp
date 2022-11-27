@@ -53,7 +53,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         if (GetLengthPrefixedview(&ptr, &key) &&
             GetLengthPrefixedview(&ptr, &value)) {
           memtable->Add(now_seq, kTypeValue, key, value);
-          mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
+          mlog->trace("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                       kTypeValue, key, value);
         } else {
           mlog->error("bad WriteBatch Put");
@@ -63,7 +63,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
       case kTypeDeletion:
         if (GetLengthPrefixedview(&ptr, &key)) {
           memtable->Add(now_seq, kTypeDeletion, key, std::string_view());
-          mlog->debug("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
+          mlog->trace("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                       kTypeDeletion, key, value);
         } else {
           mlog->error("bad WriteBatch Del");

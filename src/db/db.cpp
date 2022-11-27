@@ -642,7 +642,7 @@ State DBImpl::InstallCompactionResults(
   for (int i = 0; i < level; i++) {
     const CompactionState::Output& outs = compact->oupts[i];
     compact->comp->Edit()->AddFile(level + 1, outs.number, outs.file_size,
-                                         outs.smallest, outs.largest);
+                                   outs.smallest, outs.largest);
   }
   return versions_->LogAndApply(compact->comp->Edit(), &mutex);
 }
