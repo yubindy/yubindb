@@ -99,6 +99,6 @@ std::string_view Blockbuilder::Finish() {  // write restart piont
   }
   PutFixed32(&buffer, restarts.size());
   finished = true;
-  return std::string(buffer);
+  return buffer;
 }
 };  // namespace yubindb

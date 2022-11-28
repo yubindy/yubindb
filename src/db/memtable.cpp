@@ -92,11 +92,12 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
   meta.smallest = p->key;
   for (; table->Valid(p); p = table->Next(p)) {
     builder->Add(p->key.getview(), p->val);
+    mlog->trace("builder add {}", p->key.getusrkeyview());
   }
-  while (!table->Valid(p)) {
-    p = table->Prev(p);
+  if (p = table->SeekToLast()) {
+    if (table->Valid(p)) meta.largest = p->key;
   }
-  meta.largest = p->key;
+  mlog->info("builde meta small {} large {}", meta.smallest.getusrkeyview(), meta.largest.getusrkeyview());
   State s = builder->Finish();
   return s;
 }
@@ -171,7 +172,7 @@ State Tablebuilder::Finish() {
   return state;
 }
 void Tablebuilder::WriteBlock(Blockbuilder* block, BlockHandle* handle) {
-  std::string_view raw = block->Finish();  // TODO
+  std::string_view raw = block->Finish();
   CompressionType type = options.compression;
 
   std::string_view block_;
@@ -181,8 +182,7 @@ void Tablebuilder::WriteBlock(Blockbuilder* block, BlockHandle* handle) {
       break;
     case kSnappyCompression: {
       std::string* compress = &compressed_output;
-      if (snappy::Compress(raw.data(), raw.size(), compress) &&
-          compress->size() < raw.size() - (raw.size() / 8u)) {  //压缩比太小
+      if (snappy::Compress(raw.data(), raw.size(), compress)) {  //压缩比太小
         block_ = *compress;
       } else {
         block_ = raw;
@@ -209,7 +209,7 @@ void Tablebuilder::WriteRawBlock(const std::string_view& block_contents,
     uint32_t crc = crc32c::Crc32c(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, (uint8_t*)ptr, 1);
     EncodeFixed32(ptr, crc);
-    state = file->Append(ptr);
+    state = file->Append(std::string_view(ptr,kBlockBackSize));
     if (state.ok()) {
       offset += block_contents.size() + kBlockBackSize;
     }

@@ -13,7 +13,7 @@
 #include "filename.h"
 namespace yubindb {
 State WritableFile::Append(std::string_view ptr) {
-  return Append(ptr.data(), ptr.size());
+  return this->Append(ptr.data(), ptr.size());
 }
 static std::string_view Basename(const std::string& filename) {
   auto rul = filename.rfind('/');

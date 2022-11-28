@@ -6,9 +6,11 @@
 #include <functional>
 #include <string>
 #include <string_view>
+
 #include "common.h"
 namespace yubindb {
-static uint32_t BloomHash(const std::string_view& key) {
+std::unique_ptr<BloomFilter> bloomfit = nullptr;
+static uint32_t BloomHash(const std::string_view& key,int i) {
   std::hash<std::string_view> h;
   return h(key);
 }
@@ -28,8 +30,8 @@ void BloomFilter::CreateFiler(std::string_view* key, int n,
   filter->resize(init_size + bytes);
   filter->push_back(static_cast<char>(hash_size));
   char* array = &(*filter)[init_size];
-  for (int i = 0; i < n; i++) {
-    uint32_t h = BloomHash(key[i]);
+  for (int i = 0; i < n-1; i++) {
+    uint32_t h = BloomHash(key[i],i);
     const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
     for (size_t j = 0; j < hash_size; j++) {
       const uint32_t bitpos = h % bits;
@@ -51,7 +53,7 @@ bool BloomFilter::KeyMayMatch(const std::string_view& key,
   if (hash_size > 30) {
     return true;
   }
-  uint32_t h = BloomHash(key);
+  uint32_t h = BloomHash(key,0);
   const uint32_t delta = (h >> 17) | (h << 15);
   for (size_t j = 0; j < hash_size; j++) {
     const uint32_t bitpos = h % bits;

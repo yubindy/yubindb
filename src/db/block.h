@@ -15,7 +15,7 @@ class BlockHandle {
  public:
   enum { kMaxEncodedLength = 10 + 10 };
 
-  BlockHandle()=default;
+  BlockHandle() : offset_(0), size_(0){}
   uint64_t offset() const { return offset_; }
   void set_offset(uint64_t offset) { offset_ = offset; }
   uint64_t size() const { return size_; }
@@ -89,7 +89,7 @@ class Block {  // stack alloc
   Block(const Block&) = delete;
   Block& operator=(const Block&) = delete;
 
-  ~Block()=default;
+  ~Block() = default;
   static inline const char* DecodeEntry(const char* p, const char* limit,
                                         uint32_t* shared, uint32_t* non_shared,
                                         uint32_t* value_length) {
