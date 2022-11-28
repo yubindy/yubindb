@@ -22,9 +22,8 @@ void FilterBlockbuilder::CreateNewfilter() {
     filter_offsets_.push_back(result_.size());  // empty filter
     return;
   }
-  start_.emplace_back(keys_.size());
   char* p=keys_.data();
-  for (int i = 0; i < start_.size()-1; i++) {
+  for (int i = 0; i < start_.size(); i++) {
     tmp_keys_.emplace_back(std::string_view(p, start_[i]));
     p+=start_[i];
   }

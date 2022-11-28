@@ -439,6 +439,10 @@ void DBImpl::CompactMemTable() {
     DeleteObsoleteFiles();
   } else {
     mlog->error("CompactMemTable is error in {}", logfilenum);
+    if (bg_error.ok()) {
+      bg_error = s;
+      background_work_finished_signal.notify_all();
+    }
   }
 }
 State DBImpl::WriteLevel0Table(std::shared_ptr<Memtable>& mem,

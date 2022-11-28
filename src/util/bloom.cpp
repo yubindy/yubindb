@@ -30,8 +30,9 @@ void BloomFilter::CreateFiler(std::string_view* key, int n,
   filter->resize(init_size + bytes);
   filter->push_back(static_cast<char>(hash_size));
   char* array = &(*filter)[init_size];
-  for (int i = 0; i < n-1; i++) {
+  for (int i = 0; i < n; i++) { //test n-1,
     uint32_t h = BloomHash(key[i],i);
+    mlog->trace("push K {}",key[i]);
     const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
     for (size_t j = 0; j < hash_size; j++) {
       const uint32_t bitpos = h % bits;
@@ -58,12 +59,11 @@ bool BloomFilter::KeyMayMatch(const std::string_view& key,
   for (size_t j = 0; j < hash_size; j++) {
     const uint32_t bitpos = h % bits;
     if ((array[bitpos / 8] & (1 << (bitpos % 8))) == 0) {
-      mlog->info("Bloom isnot exest {}", key);
       return false;
     }
     h += delta;
   }
-  mlog->info("Bloom exest {}", key);
+  mlog->trace("Bloom exest {}", key);
   return true;
 }
 

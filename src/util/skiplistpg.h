@@ -22,9 +22,7 @@ struct node {
   ~node() = default;
   friend class Skiplist;
   friend int my_cmp(skiplist_node* a, skiplist_node* b, void* aux);
-  // Metadata for skiplist node.
   skiplist_node snode;
-  // My data here: {int, int} pair.
 
   InternalKey key;
   std::string val;  // value size (varint32) + value std::string
@@ -47,13 +45,12 @@ class Skiplist {  // skiplist package
   ~Skiplist() {
     skiplist_node* cursor = skiplist_begin(&table);
     while (cursor) {
-      node* entry = _get_entry(cursor,node, snode);
+      node* entry = _get_entry(cursor, node, snode);
       cursor = skiplist_next(&table, cursor);
       skiplist_erase_node(&table, &entry->snode);
       skiplist_release_node(&entry->snode);
       skiplist_wait_for_free(&entry->snode);
       skiplist_free_node(&entry->snode);
-      free(entry);
     }
     skiplist_free(&table);
   }

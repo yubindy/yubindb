@@ -5,7 +5,8 @@
 #include "src/util/key.h"
 namespace yubindb {
 void Skiplist::Insert(SkiplistKey skiplistkv) {
-  std::unique_ptr<node> p = std::make_unique<node>();
+  //node* p = new node();
+  auto p=std::make_unique<node>();
   skiplist_init_node(&p->snode);
   skiplistkv.Key(p->key);
   skiplistkv.Val(p->val);
