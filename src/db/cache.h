@@ -80,7 +80,7 @@ class TableCache {  //(SSTable.file_number)->(TableAndFile*)
   State FindTable(uint64_t file_num, uint64_t file_size, CacheHandle** handle);
 
   PosixEnv* env;
-  std::string_view dbname;
+  std::string dbname;
   const Options* const opt;
   std::unique_ptr<ShareCache> cache;
 };

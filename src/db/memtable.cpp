@@ -7,7 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <string_view>
+#include <string>
+#include <string_view> 
 
 #include "src/db/block.h"
 #include "src/util/common.h"
@@ -18,8 +19,9 @@ void Footer::EncodeTo(std::string* dst) const {
   metaindex_handle_.EncodeTo(dst);
   index_handle_.EncodeTo(dst);
   dst->resize(2 * BlockHandle::kMaxEncodedLength);
-  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));
-  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber >> 32));
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber));
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber>>32));
+  assert(dst->size() == kEncodedLength);
 }
 State Footer::DecodeFrom(std::string_view* input) {
   const char* magic_ptr = input->data() + kEncodedLength - 8;
@@ -28,7 +30,9 @@ State Footer::DecodeFrom(std::string_view* input) {
   const uint64_t magic = ((static_cast<uint64_t>(magic_hi) << 32) |
                           (static_cast<uint64_t>(magic_lo)));
   if (magic != kTableMagicNumber) {
-    mlog->warn("not an sstable (bad magic number");
+    mlog->warn("not an sstable (bad magic number {0:x}",magic);
+    mlog->warn("truemagic {0:x}",kTableMagicNumber);
+    //mlog->info("{0:x}",std::stol(std::string(magic_ptr,8)));
     return State::Corruption();
   }
   State rul = metaindex_handle_.DecodeFrom(input);
@@ -97,7 +101,6 @@ State Memtable::Flushlevel0fromskip(FileMate& meta,
   if (p = table->SeekToLast()) {
     if (table->Valid(p)) meta.largest = p->key;
   }
-  mlog->info("builde meta small {} large {}", meta.smallest.getusrkeyview(), meta.largest.getusrkeyview());
   State s = builder->Finish();
   return s;
 }
@@ -163,6 +166,10 @@ State Tablebuilder::Finish() {
     footer.set_metaindex_handle(metaindex_block_handle);
     footer.set_index_handle(index_block_handle);
     std::string footer_encoding;
+    mlog->info(
+        "sstable flooter metaindex offset {} size {} index offset {} size {}",
+        metaindex_block_handle.offset(), metaindex_block_handle.size(),
+        index_block_handle.offset(), index_block_handle.size());
     footer.EncodeTo(&footer_encoding);
     state = file->Append(footer_encoding);
     if (state.ok()) {
@@ -209,7 +216,7 @@ void Tablebuilder::WriteRawBlock(const std::string_view& block_contents,
     uint32_t crc = crc32c::Crc32c(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, (uint8_t*)ptr, 1);
     EncodeFixed32(ptr, crc);
-    state = file->Append(std::string_view(ptr,kBlockBackSize));
+    state = file->Append(std::string_view(ptr, kBlockBackSize));
     if (state.ok()) {
       offset += block_contents.size() + kBlockBackSize;
     }

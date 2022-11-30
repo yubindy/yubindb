@@ -1,3 +1,5 @@
+#include <string>
+
 #include "gtest/gtest.h"
 #include "src/db/db.h"
 #include "src/util/common.h"
@@ -10,25 +12,32 @@ TEST(testReadBlock, base) {
   assert(s.ok());
 
   // write key1,value1
-  std::string key = "key0";
-  std::string value = "value0";
+  std::string key;
+  std::string value;
   size_t p = 0;
   for (int i = 0; i < 200; i++) {
+    key = "key";
+    value = "value";
+    key.append(std::to_string(i));
+    value.append(std::to_string(i));
     s = db->Put(yubindb::WriteOptions(), key, value);
-    key.replace(3, std::to_string(i).size(), std::to_string(i));
-    value.replace(5, std::to_string(i).size(), std::to_string(i));
     EXPECT_TRUE(s.ok());
   }
-  key = "key0";
-  value = "value0";
-  sleep(1);  // wait flush sstable
-  //fix
-  for (int i = 0; i < 200; i + 10) {
-    s = db->Get(yubindb::ReadOptions(), key1, &value);
+  sleep(1);
+  std::string value1;
+  for (int i = 0; i < 200; i += 10) { //前面从imm get,然后从sstable get,最后从memtable读
+    key = "key";
+    value = "value";
+    key.append(std::to_string(i));
+    value.append(std::to_string(i));
+    s = db->Get(yubindb::ReadOptions(), key, &value1);
     EXPECT_TRUE(s.ok());
-    value1.append(std::to_string(i));
     EXPECT_EQ(value, value1);
   }
   delete db;
+  // std::string p;
+  // PutFixed32(&p,32);
+  // auto s=DecodeFixed32(p.data());
+  // PutFixed32(&p,16);
 }
-TEST(testReadTable, base) {}
+// TEST(testReadTable, base) {}

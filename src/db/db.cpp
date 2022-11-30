@@ -437,8 +437,9 @@ void DBImpl::CompactMemTable() {
     imm_ = nullptr;
     has_imm_.store(false, std::memory_order_release);
     DeleteObsoleteFiles();
+    mlog->debug("Set imm is nullpter");
   } else {
-    mlog->error("CompactMemTable is error in {}", logfilenum);
+    mlog->warn("CompactMemTable is error in {}", logfilenum);
     if (bg_error.ok()) {
       bg_error = s;
       background_work_finished_signal.notify_all();
@@ -491,6 +492,8 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   } else {
     env->DeleteFile(fname);
   }
+  mlog->info("builde meta small {} large {} filesize {}", meta.smallest.getusrkeyview(),
+             meta.largest.getusrkeyview(),meta.file_size);
   return s;
 }
 State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {

@@ -64,8 +64,8 @@ State Version::Get(const ReadOptions& op, const Lookey& key, std::string* val,
       tmp.reserve(num_files);
       for (uint32_t i = 0; i < num_files; i++) {
         std::shared_ptr<FileMate> f = files_[i];
-        if (cmp(user_key, f->smallest.getusrkeyview()) >= 0 &&
-            cmp(user_key, f->largest.getusrkeyview()) <= 0) {
+        if (user_key.compare(f->smallest.getusrkeyview()) >= 0 &&
+            user_key.compare(f->largest.getusrkeyview()) <= 0) {
           tmp.push_back(f);
         }
       }
@@ -90,39 +90,39 @@ State Version::Get(const ReadOptions& op, const Lookey& key, std::string* val,
       }
     }
     for (uint32_t i = 0; i < num_files; i++) {
-      if (last_file_read != nullptr && stats == nullptr) {
+      if (last_file_read != nullptr && stats->seek_file == nullptr) {
         stats->seek_file = last_file_read;
         stats->seek_file_level = last_file_read_level;
+      }
+      std::shared_ptr<FileMate> f = files_[i];
+      last_file_read = f;
+      last_file_read_level = level;
 
-        std::shared_ptr<FileMate> f = files_[i];
-        last_file_read = f;
-        last_file_read_level = level;
-
-        Saver saver;
-        saver.state = kNotFound;
-        saver.user_key = user_key;
-        saver.value = val;
-        s = vset->table_cache->Get(op, f->num, f->file_size, ikey, &saver,
-                                   SaveValue);  //回调保存save里
-        if (!s.ok()) {
+      Saver saver;
+      saver.state = kNotFound;
+      saver.user_key = user_key;
+      saver.value = val;
+      s = vset->table_cache->Get(op, f->num, f->file_size, ikey, &saver,
+                                 SaveValue);  //回调保存save里
+      if (!s.ok()) {
+        return s;
+      }
+      switch (saver.state) {
+        case kNotFound:
+          break;  // Keep searching in other files
+        case kFound:
           return s;
-        }
-        switch (saver.state) {
-          case kNotFound:
-            break;  // Keep searching in other files
-          case kFound:
-            return s;
-          case kDeleted:
-            s = State::Notfound();
-            return s;
-          case kCorrupt:
-            s = State::Corruption();
-            mlog->error("corrupted key for ", user_key);
-            return s;
-        }
+        case kDeleted:
+          s = State::Notfound();
+          return s;
+        case kCorrupt:
+          s = State::Corruption();
+          mlog->error("corrupted key for ", user_key);
+          return s;
       }
     }
   }
+  return State::Notfound();
 }
 void Version::GetOverlappFiles(int level, const InternalKey* begin,
                                const InternalKey* end,
