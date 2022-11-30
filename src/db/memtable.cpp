@@ -32,7 +32,6 @@ State Footer::DecodeFrom(std::string_view* input) {
   if (magic != kTableMagicNumber) {
     mlog->warn("not an sstable (bad magic number {0:x}",magic);
     mlog->warn("truemagic {0:x}",kTableMagicNumber);
-    //mlog->info("{0:x}",std::stol(std::string(magic_ptr,8)));
     return State::Corruption();
   }
   State rul = metaindex_handle_.DecodeFrom(input);
@@ -215,7 +214,7 @@ void Tablebuilder::WriteRawBlock(const std::string_view& block_contents,
     ptr[0] = type;
     uint32_t crc = crc32c::Crc32c(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, (uint8_t*)ptr, 1);
-    EncodeFixed32(ptr, crc);
+    EncodeFixed32(ptr+1, crc);
     state = file->Append(std::string_view(ptr, kBlockBackSize));
     if (state.ok()) {
       offset += block_contents.size() + kBlockBackSize;

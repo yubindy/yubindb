@@ -58,11 +58,12 @@ State WriteStringToFile(PosixEnv* env, std::string_view data,
 State WritableFile::Append(const char* ptr, uint32_t size) {
   uint32_t wrsize = std::min(size, kWritableFileBufferSize - offset);
   const char* wrptr = ptr;
-  std::memcpy(buf_, ptr, wrsize);
+  std::memcpy(buf_+offset, ptr, wrsize);
   size -= wrsize;
   wrptr += wrsize;
   offset += wrsize;
   if (size == 0) {
+    //Flush(); //TODO delete
     return State::Ok();
   }
   Flush();
