@@ -26,6 +26,8 @@ static bool Ismanifest(const std::string& filename);
 static std::string Dirname(const std::string& filename);
 State WriteStringToFile(PosixEnv* env, std::string_view data,
                         const std::string& fname, bool sync);
+State ReadFileToString(PosixEnv* env, const std::string& fname,
+                       std::string* data);
 class FileLock {
  public:
   FileLock(int fd, std::string filename)
@@ -75,7 +77,7 @@ class ReadFile {
   ReadFile& operator=(const ReadFile&) = delete;
   ~ReadFile() = default;
   std::string_view Name() { return std::string_view(str); }
-  State Read(uint32_t n, std::string_view result, char* scratch);
+  State Read(uint32_t n, std::string* result);
   State Skip(uint64_t n);
 
  private:
@@ -114,7 +116,7 @@ class RandomAccessFile {
     *result = std::string_view(scratch, (read_size < 0) ? 0 : read_size);
     if (read_size < 0) {
       spdlog::error("error read: filename: {} err: {}", filename_.c_str(),
-                   strerror(errno));
+                    strerror(errno));
       return State::IoError();
     }
     // Close the temporary file descriptor opened earlier.
@@ -131,12 +133,9 @@ class PosixEnv {
  public:
   typedef std::function<void()> backwork;
   PosixEnv() = default;
-  ~PosixEnv() {
-    //static char msg[] = "PosixEnv destroyed!\n";
-    //std::fwrite(msg, 1, sizeof(msg), stderr);
-  }
+  ~PosixEnv()=default;
   State NewReadFile(const std::string& filename,
-                    std::unique_ptr<ReadFile>& result);
+                    std::shared_ptr<ReadFile>& result);
   State NewRandomAccessFile(const std::string& filename,
                             std::shared_ptr<RandomAccessFile>& result);
   State NewWritableFile(const std::string& filename,

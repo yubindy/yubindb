@@ -8,9 +8,12 @@
 #include <unistd.h>
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <thread>
 
 #include "filename.h"
+#include "src/util/common.h"
 namespace yubindb {
 State WritableFile::Append(std::string_view ptr) {
   return this->Append(ptr.data(), ptr.size());
@@ -38,6 +41,31 @@ static std::string Dirname(const std::string& filename) {
 
   return filename.substr(0, separator_pos);
 }
+State ReadFile::Read(uint32_t n, std::string* result) {
+  State s;
+  while (true) {
+    size_t size=result->size();
+    result->resize(size+n);
+    ::ssize_t read_size = ::read(fd,result->data()+size, n);
+    if (read_size < 0) {  // Read error.
+      if (errno == EINTR) {
+        continue;  // Retry
+      }
+      s = State::IoError();
+      mlog->error("read {} has error in {}", str, fd);
+      break;
+    }
+    break;
+  }
+  return s;
+}
+State ReadFile::Skip(uint64_t n) {
+  if (::lseek(fd, n, SEEK_CUR) == static_cast<off_t>(-1)) {
+    mlog->error("read {} has error in {}", str, fd);
+    return State::IoError();
+  }
+  return State::Ok();
+}
 State WriteStringToFile(PosixEnv* env, std::string_view data,
                         const std::string& fname, bool sync) {
   std::unique_ptr<WritableFile> file;
@@ -55,15 +83,39 @@ State WriteStringToFile(PosixEnv* env, std::string_view data,
   }
   return s;
 }
+State ReadFileToString(PosixEnv* env, const std::string& fname,
+                       std::string* data) {
+  data->clear();
+  std::unique_ptr<ReadFile> file;
+  State s = env->NewReadFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  static const int kBufferSize = 8192;
+  char* space = new char[kBufferSize];
+  while (true) {
+    std::string_view fragment;
+    s = file->Read(kBufferSize, &fragment, space);
+    if (!s.ok()) {
+      break;
+    }
+    data->append(fragment.data(), fragment.size());
+    if (fragment.empty()) {
+      break;
+    }
+  }
+  delete[] space;
+  return s;
+}
 State WritableFile::Append(const char* ptr, uint32_t size) {
   uint32_t wrsize = std::min(size, kWritableFileBufferSize - offset);
   const char* wrptr = ptr;
-  std::memcpy(buf_+offset, ptr, wrsize);
+  std::memcpy(buf_ + offset, ptr, wrsize);
   size -= wrsize;
   wrptr += wrsize;
   offset += wrsize;
   if (size == 0) {
-    //Flush(); //TODO delete
+    // Flush(); //TODO delete
     return State::Ok();
   }
   Flush();
@@ -137,7 +189,7 @@ State WritableFile::SyncDirmainifset() {
   return State::Ok();
 }
 State PosixEnv::NewReadFile(const std::string& filename,
-                            std::unique_ptr<ReadFile>& result) {
+                            std::shared_ptr<ReadFile>& result) {
   int fd = ::open(filename.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     result = nullptr;

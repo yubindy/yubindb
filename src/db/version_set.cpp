@@ -4,6 +4,7 @@
 #include <memory>
 #include <string_view>
 
+#include "src/db/reader.h"
 #include "src/db/version_edit.h"
 #include "src/util/env.h"
 #include "src/util/filename.h"
@@ -303,8 +304,88 @@ class VersionSet::Builder {  // helper form edit+version=next version
 };
 State VersionSet::Recover(bool* save_manifest) {
   *save_manifest = false;
-  return State::Ok();
-}  // TODO
+  std::string current;
+  State s = ReadFileToString(env_.get(), CurrentFileName(dbname), &current);
+  if (!s.ok()) {
+    return s;
+  }
+  if (current.empty() || current[current.size() - 1] != '\n') {
+    mlog->error("CURRENT file does not end with newline");
+    return State::Corruption();
+  }
+  current.resize(current.size() - 1);
+
+  std::string dscname = dbname + "/" + current;
+  std::shared_ptr<ReadFile> file;
+  s = env_->NewReadFile(dscname, file);
+  if (!s.ok()) {
+    if (s.IsNotFound()) {
+      mlog->error("CURRENT points to a non-existent file");
+      return State::Corruption();
+    }
+    return s;
+  }  // TODO
+  bool have_log_number = false;
+  bool have_next_file = false;
+  bool have_last_sequence = false;
+  uint64_t next_file_ = 0;
+  uint64_t last_sequence_ = 0;
+  uint64_t log_number_ = 0;
+  Builder builder(this, nowversion);
+  {
+    Reader reads(file, true, 0);
+    std::string ptr;
+    while (reads.ReadRecord(&ptr) && s.ok()) {
+      VersionEdit edit;
+      s = edit.DecodeFrom(ptr);
+      if (s.ok()) {
+        builder.Apply(&edit);
+      }
+      if (edit.has_log_number) {
+        log_number_ = edit.log_number;
+        have_log_number = true;
+      }
+      if (edit.has_next_file_number) {
+        next_file_ = edit.next_file_number;
+        have_next_file = true;
+      }
+
+      if (edit.has_last_sequence) {
+        last_sequence_ = edit.last_sequence;
+        have_last_sequence = true;
+      }
+    }
+  }
+  file = nullptr;
+  if (s.ok()) {
+    if (!have_next_file) {
+      s = State::Corruption();
+      mlog->error("no meta-nextfile entry in descriptor");
+    } else if (!have_log_number) {
+      s = State::Corruption();
+      mlog->error("no meta-lognumber entry in descriptor");
+    } else if (!have_last_sequence) {
+      s = State::Corruption();
+      mlog->error("no last-sequence-number entry in descriptor");
+    }
+    if (next_file_number <= log_number) {
+      next_file_number = log_number + 1;
+    }
+  }
+  if (s.ok()) {
+    std::shared_ptr<Version> v = std::make_shared<Version>();
+    builder.SaveTo(v);
+    // Install recovered version
+    Finalize(v);
+    versionlist.emplace_front(v);
+    manifest_file_number = next_file_;
+    next_file_number = next_file_ + 1;
+    last_sequence = last_sequence_;
+    log_number = log_number_;
+    *save_manifest = true;
+  }
+  return s;
+}
 State VersionSet::LogAndApply(
     VersionEdit* edit,
     std::mutex* mu) {  //将VersionEdit应用到Current Version,并且写入current文件

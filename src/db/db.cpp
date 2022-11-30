@@ -19,6 +19,7 @@
 #include "src/util/common.h"
 #include "src/util/env.h"
 #include "src/util/key.h"
+#include "../util/filenm"
 #include "src/util/options.h"
 #include "version_edit.h"
 class Version;
@@ -106,7 +107,30 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
     return s;
   }
   SequenceNum max_sequence(0);
-  // TODO
+  const uint64_t min_log = versions_->LogNumber();
+   std::vector<std::string> filenames;
+  s = env->GetChildren(dbname, &filenames);
+  if (!s.ok()) {
+    return s;
+  }
+  std::set<uint64_t> expected;
+  versions_->AddLiveFiles(&expected);
+  uint64_t number;
+  FileType type;
+  std::vector<uint64_t> logs;
+  for (size_t i = 0; i < filenames.size(); i++) {
+    if (ParsefileName(filenames[i], &number, &type)) {
+      expected.erase(number);
+      if (type == kLogFile && ((number >= min_log) ))
+        logs.push_back(number);
+    }
+  }
+  if (!expected.empty()) {
+        mlog->error("missing files; {}",TableFileName(dbname, *(expected.begin())));
+    return State::Corruption();
+  }
+  //TODO recover memtable
+  
   return State::Ok();
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
