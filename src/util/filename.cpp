@@ -76,7 +76,9 @@ bool ParsefileName(const std::string& filename, uint64_t* number,
     *number = num;
   } else {
     uint64_t num;
+    int i=filename.find('.');
     std::string_view suffix = pfile;
+    suffix.remove_prefix(i);
     num = strtoull(pfile.data(), NULL, 0);
     if (suffix == std::string_view(".log")) {
       *type = kLogFile;

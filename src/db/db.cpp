@@ -10,7 +10,6 @@
 
 #include "../util/bloom.h"
 #include "../util/filename.h"
-#include "../util/filenm"
 #include "iterator.h"
 #include "snapshot.h"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -86,17 +85,17 @@ DBImpl::~DBImpl() {
   if (db_lock != nullptr) {
     env->UnlockFile(db_lock);
   }
+  mlog->info("close db {}",dbname);
 }
 //该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
 //目录是否存在、Current文件是否存在等。然后主要通过VersionSet::Recover与DBImpl::RecoverLogFile
 //两个方法，分别恢复其VersionSet的状态与MemTable的状态。
 State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   env->CreateDir(dbname);
-  // State s = env->LockFile(LockFileName(dbname), db_lock);
-  // if (!s.ok()) {
-  //   return s;
-  // }
-  State s;
+  State s = env->LockFile(LockFileName(dbname), db_lock);
+  if (!s.ok()) {
+    return s;
+  }
   if (!env->FileExists(CurrentFileName(dbname))) {
     s = NewDB();
     if (!s.ok()) {
@@ -157,34 +156,42 @@ State DBImpl::RecoverLogFile(uint32_t log_num, bool last_log,
   WriteBatch batch;
   int compactions = 0;
   std::shared_ptr<Memtable> mem = nullptr;
+  std::shared_ptr<Version> base = nullptr;
   while (readers.ReadRecord(&record)) {
     if (record.size() < 12) {
       mlog->error("log {} record too small {}", log_num, record.size());
       continue;
     }
-    batch->SetCount(record);
+    batch.SetContents(record);
     if (mem == nullptr) {
-      mem = std::make_shared(MemTable);
+      mem = std::make_shared<Memtable>();
     }
-    s = batch->InsertInto(mem);
-    if (!status.ok()) {
+    s = batch.InsertInto(mem);
+    if (!s.ok()) {
       break;
     }
-    const SequenceNum last_seq = batch->Sequence() + batch->Count() - 1;
+    const SequenceNum last_seq = batch.Sequence() + batch.Count() - 1;
     if (last_seq > *max_sequence) {
       *max_sequence = last_seq;
     }
-    if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
+    if (mem->ApproximateMemoryUsage() > opts->write_buffer_size) {
       compactions++;
       *save_manifest = true;
-      s = WriteLevel0Table(mem, edit, nullptr);
+      s = WriteLevel0Table(mem, *edit, base);
       mem = nullptr;
       if (!s.ok()) {
         break;
       }
     }
   }
-}
+  if (mem != nullptr) {
+    // mem did not get reused; compact it.
+    if (s.ok()) {
+      *save_manifest = true;
+      s = WriteLevel0Table(mem, *edit, base);
+    }
+  }
+  return s;
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;

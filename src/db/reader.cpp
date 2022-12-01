@@ -12,7 +12,6 @@ Reader::Reader(std::shared_ptr<ReadFile> file_, bool checksum,
                uint64_t initial_offset)
     : file(file_),
       checksum_(checksum),
-      backing_store_(new char[kBlockSize]),
       eof_(false),
       last_record_offset_(0),
       end_of_buffer_offset_(0),
@@ -43,11 +42,11 @@ bool Reader::ReadRecord(std::string* str) {
   str->clear();
   bool in_fragmented_record = false;
   uint64_t record_offset = 0;
-  std::string_view frame;
+  std::string frame;
   while (true) {
     const unsigned int record_type = ReadPhysicalRecord(&frame);
     uint64_t physical_recordoff =
-        end_of_buffer_offset_ - backing_store_.size() - kHeaderSize - frame.size();
+        end_of_buffer_offset_ - kHeaderSize - frame.size();
     switch (record_type) {
       case kFullType:
         if (in_fragmented_record) {
@@ -117,12 +116,16 @@ bool Reader::ReadRecord(std::string* str) {
     return false;
   }
 }
-unsigned int Reader::ReadPhysicalRecord(std::string_view* result) {
+unsigned int Reader::ReadPhysicalRecord(std::string* result) {
+  size_t readsize=0;
   while (true) {
     if (backing_store_.size() < kHeaderSize) {
       if (!eof_) {
         backing_store_.clear();
-        State status = file->Read(kBlockSize, &backing_store_);
+        State status = file->Read(kBlockSize, &backing_store_,&readsize);
+        if(readsize<=0){
+          break;
+        }
         //当前Block结束位置的偏移
         end_of_buffer_offset_ += backing_store_.size();
         if (!status.ok()) {
@@ -168,13 +171,9 @@ unsigned int Reader::ReadPhysicalRecord(std::string_view* result) {
         return kBadRecord;
       }
     }
-    // Skip physical record that started before initial_offset_
-    if (end_of_buffer_offset_ - backing_store_.size() - kHeaderSize - length <
-        initial_offset_) {
-      return kBadRecord;
-    }
 
-    *result = std::string_view(header + kHeaderSize, length);
+    result->assign(header + kHeaderSize, length);
+    backing_store_.clear();
     return type;
   }
 }

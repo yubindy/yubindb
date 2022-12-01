@@ -2,6 +2,7 @@
 
 #include "../util/key.h"
 #include "memtable.h"
+#include "src/util/common.h"
 namespace yubindb {
 //前8字节是该WriteBatch的SequenceNumber，后4字节是该WriteBatch中Entry的数量
 static const uint32_t Headsize = 12;
@@ -83,5 +84,9 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
   } else {
     return State::Ok();
   }
+}
+void WriteBatch::SetContents(const std::string_view& contents) {
+  assert(contents.size() >= kHeader);
+  mate.assign(contents.data(), contents.size());
 }
 }  // namespace yubindb

@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -41,12 +42,12 @@ static std::string Dirname(const std::string& filename) {
 
   return filename.substr(0, separator_pos);
 }
-State ReadFile::Read(uint32_t n, std::string* result) {
+State ReadFile::Read(uint32_t n, std::string* result,size_t* readsize) {
   State s;
   while (true) {
-    size_t size=result->size();
-    result->resize(size+n);
-    ::ssize_t read_size = ::read(fd,result->data()+size, n);
+    size_t size = result->size();
+    result->resize(size + n);
+    ::ssize_t read_size = ::read(fd, result->data() + size, n);
     if (read_size < 0) {  // Read error.
       if (errno == EINTR) {
         continue;  // Retry
@@ -55,6 +56,8 @@ State ReadFile::Read(uint32_t n, std::string* result) {
       mlog->error("read {} has error in {}", str, fd);
       break;
     }
+    *readsize=read_size;
+    result->resize(size+read_size);
     break;
   }
   return s;
@@ -77,7 +80,6 @@ State WriteStringToFile(PosixEnv* env, std::string_view data,
   if (s.ok() && sync) {
     s = file->Sync();
   }
-  file.reset();
   if (!s.ok()) {
     env->DeleteFile(fname);
   }
@@ -86,25 +88,22 @@ State WriteStringToFile(PosixEnv* env, std::string_view data,
 State ReadFileToString(PosixEnv* env, const std::string& fname,
                        std::string* data) {
   data->clear();
-  std::unique_ptr<ReadFile> file;
+  std::shared_ptr<ReadFile> file;
   State s = env->NewReadFile(fname, file);
   if (!s.ok()) {
     return s;
   }
   static const int kBufferSize = 8192;
-  char* space = new char[kBufferSize];
+  size_t readsize;
   while (true) {
-    std::string_view fragment;
-    s = file->Read(kBufferSize, &fragment, space);
+    s = file->Read(kBufferSize, data,&readsize);
     if (!s.ok()) {
       break;
     }
-    data->append(fragment.data(), fragment.size());
-    if (fragment.empty()) {
+    if (readsize<=0) {
       break;
     }
   }
-  delete[] space;
   return s;
 }
 State WritableFile::Append(const char* ptr, uint32_t size) {
@@ -115,7 +114,6 @@ State WritableFile::Append(const char* ptr, uint32_t size) {
   wrptr += wrsize;
   offset += wrsize;
   if (size == 0) {
-    // Flush(); //TODO delete
     return State::Ok();
   }
   Flush();
@@ -158,8 +156,9 @@ State WritableFile::Flush() {
   return State::Ok();
 }
 State WritableFile::Sync(int fd, const std::string& pt) {
-  if (ismainifset) {
-    return SyncDirmainifset();
+  State s = SyncDirmainifset();
+  if (!s.ok()) {
+    return s;
   }
   State p = Flush();
   if (!p.ok()) {
@@ -172,14 +171,17 @@ State WritableFile::Sync(int fd, const std::string& pt) {
   return State::IoError();
 }
 State WritableFile::SyncDirmainifset() {
+  if (!ismainifset) {
+    return State::Ok();
+  }
   int fd = ::open(dirstr.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     mlog->error("error open: filename: {} err: {}", dirstr.c_str(),
                 strerror(errno));
-    ::close(fd);
     return State::IoError();
   } else {
     if (::fsync(fd) == 0) {
+      ::close(fd);
       return State::Ok();
     }
     mlog->error("error SyncDirmainifset: filename: {} err: {}", dirstr.c_str(),

@@ -15,8 +15,12 @@ void VersionEdit::Clear() {
   deleted_files.clear();
   new_files.clear();
 }
-
+void VersionEdit::ToDebug() const {  // for debug
+  mlog->debug("wal lognumber:{} next_filenum:{} last_sequence:{}", log_number,
+              next_file_number, last_sequence);
+}
 void VersionEdit::EncodeTo(std::string* dst) const {
+  ToDebug();
   if (has_log_number) {
     PutVarint32(dst, kLogNumber);
     PutVarint64(dst, log_number);

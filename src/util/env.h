@@ -57,7 +57,9 @@ class WritableFile {
   std::string_view Name() { return std::string_view(filestr); }
   State Close();
   State Flush();  // flush是将我们自己的缓冲写入文件
-  State Sync() { return Sync(fd, filestr); }
+  State Sync() {
+    return Sync(fd, filestr);
+  }
   State Sync(int fd, const std::string& pt);
   State SyncDirmainifset();
 
@@ -77,7 +79,7 @@ class ReadFile {
   ReadFile& operator=(const ReadFile&) = delete;
   ~ReadFile() = default;
   std::string_view Name() { return std::string_view(str); }
-  State Read(uint32_t n, std::string* result);
+  State Read(uint32_t n, std::string* result,size_t* readsize);
   State Skip(uint64_t n);
 
  private:
@@ -133,7 +135,7 @@ class PosixEnv {
  public:
   typedef std::function<void()> backwork;
   PosixEnv() = default;
-  ~PosixEnv()=default;
+  ~PosixEnv() = default;
   State NewReadFile(const std::string& filename,
                     std::shared_ptr<ReadFile>& result);
   State NewRandomAccessFile(const std::string& filename,

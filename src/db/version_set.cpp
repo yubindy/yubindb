@@ -324,7 +324,7 @@ State VersionSet::Recover(bool* save_manifest) {
       return State::Corruption();
     }
     return s;
-  }  // TODO
+  }
   bool have_log_number = false;
   bool have_next_file = false;
   bool have_last_sequence = false;
@@ -373,7 +373,7 @@ State VersionSet::Recover(bool* save_manifest) {
     }
   }
   if (s.ok()) {
-    std::shared_ptr<Version> v = std::make_shared<Version>();
+    std::shared_ptr<Version> v = std::make_shared<Version>(this);
     builder.SaveTo(v);
     // Install recovered version
     Finalize(v);

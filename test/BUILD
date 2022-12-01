@@ -40,3 +40,12 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+cc_test(
+    name = "recover",
+    srcs = ["testrecover.cpp"],
+    deps = [
+        "//src/db:db",
+        "//src/util:util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

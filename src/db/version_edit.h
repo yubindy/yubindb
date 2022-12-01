@@ -20,7 +20,7 @@ class VersionEdit {
  public:
   VersionEdit() { Clear(); }
   ~VersionEdit() = default;
-
+  void ToDebug() const;
   void Clear();
   void SetLogNumber(uint64_t num) {
     has_log_number = true;

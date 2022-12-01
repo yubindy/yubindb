@@ -26,7 +26,7 @@ class Reader {
     kBadRecord = kLastType + 2
   };
   bool SkipToInitialBlock();
-  unsigned int ReadPhysicalRecord(std::string_view* result);
+  unsigned int ReadPhysicalRecord(std::string* result);
 
   std::shared_ptr<ReadFile>  file;
   bool const checksum_;       //是否进行数据校验
