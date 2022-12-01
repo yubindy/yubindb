@@ -10,16 +10,17 @@
 
 #include "../util/bloom.h"
 #include "../util/filename.h"
+#include "../util/filenm"
 #include "iterator.h"
 #include "snapshot.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "src/db/filterblock.h"
 #include "src/db/memtable.h"
+#include "src/db/reader.h"
 #include "src/db/version_set.h"
 #include "src/util/common.h"
 #include "src/util/env.h"
 #include "src/util/key.h"
-#include "../util/filenm"
 #include "src/util/options.h"
 #include "version_edit.h"
 class Version;
@@ -108,7 +109,7 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   }
   SequenceNum max_sequence(0);
   const uint64_t min_log = versions_->LogNumber();
-   std::vector<std::string> filenames;
+  std::vector<std::string> filenames;
   s = env->GetChildren(dbname, &filenames);
   if (!s.ok()) {
     return s;
@@ -121,17 +122,69 @@ State DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
   for (size_t i = 0; i < filenames.size(); i++) {
     if (ParsefileName(filenames[i], &number, &type)) {
       expected.erase(number);
-      if (type == kLogFile && ((number >= min_log) ))
-        logs.push_back(number);
+      if (type == kLogFile && ((number >= min_log))) logs.push_back(number);
     }
   }
   if (!expected.empty()) {
-        mlog->error("missing files; {}",TableFileName(dbname, *(expected.begin())));
+    mlog->error("missing files; {}",
+                TableFileName(dbname, *(expected.begin())));
     return State::Corruption();
   }
-  //TODO recover memtable
-  
+  // Recover by lognumber sort
+  std::sort(logs.begin(), logs.end());
+  for (size_t i = 0; i < logs.size(); i++) {
+    s = RecoverLogFile(logs[i], (i == logs.size() - 1), save_manifest, edit,
+                       &max_sequence);
+    if (!s.ok()) {
+      return s;
+    }
+  }
+
   return State::Ok();
+}
+State DBImpl::RecoverLogFile(uint32_t log_num, bool last_log,
+                             bool* save_manifest, VersionEdit* edit,
+                             SequenceNum* max_sequence) {
+  std::string fname = LogFileName(dbname, log_num);
+  std::shared_ptr<ReadFile> file;
+  State s = env->NewReadFile(fname, file);
+  if (!s.ok()) {
+    return s;
+  }
+  Reader readers(file, true, 0);
+  mlog->debug("Recovering log #{}", log_num);
+  std::string record;
+  WriteBatch batch;
+  int compactions = 0;
+  std::shared_ptr<Memtable> mem = nullptr;
+  while (readers.ReadRecord(&record)) {
+    if (record.size() < 12) {
+      mlog->error("log {} record too small {}", log_num, record.size());
+      continue;
+    }
+    batch->SetCount(record);
+    if (mem == nullptr) {
+      mem = std::make_shared(MemTable);
+    }
+    s = batch->InsertInto(mem);
+    if (!status.ok()) {
+      break;
+    }
+    const SequenceNum last_seq = batch->Sequence() + batch->Count() - 1;
+    if (last_seq > *max_sequence) {
+      *max_sequence = last_seq;
+    }
+    if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
+      compactions++;
+      *save_manifest = true;
+      s = WriteLevel0Table(mem, edit, nullptr);
+      mem = nullptr;
+      if (!s.ok()) {
+        break;
+      }
+    }
+  }
+}
 }
 State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   *dbptr = nullptr;
@@ -516,8 +569,9 @@ State DBImpl::BuildTable(std::shared_ptr<Memtable>& mem, FileMate& meta) {
   } else {
     env->DeleteFile(fname);
   }
-  mlog->info("builde meta small {} large {} filesize {}", meta.smallest.getusrkeyview(),
-             meta.largest.getusrkeyview(),meta.file_size);
+  mlog->info("builde meta small {} large {} filesize {}",
+             meta.smallest.getusrkeyview(), meta.largest.getusrkeyview(),
+             meta.file_size);
   return s;
 }
 State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {

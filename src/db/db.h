@@ -116,6 +116,8 @@ class DBImpl : public DB {
                                    std::shared_ptr<Iterator>& input);
   State OpenCompactionOutputFile(CompactionState* compact);
   State InstallCompactionResults(std::unique_ptr<CompactionState>& compact);
+  State RecoverLogFile(uint32_t log_num, bool last_log, bool* save_manifest,
+                      VersionEdit* edit, SequenceNum* max_sequence);
   const std::string dbname;
   const Options* opts;
   std::unique_ptr<FileLock> db_lock;
