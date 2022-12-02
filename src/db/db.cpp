@@ -199,7 +199,6 @@ State DBImpl::Open(const Options& options, std::string name, DB** dbptr) {
   if (!bloomfit) bloomfit = std::make_unique<BloomFilter>(10);
   impl->mutex.lock();
   VersionEdit edit;
-  // Recover handles create_if_missing, error_if_exists
   bool save_manifest = false;
   State s = impl->Recover(&edit, &save_manifest);  //恢复自身状态。
   if (s.ok() && impl->mem_ == nullptr) {

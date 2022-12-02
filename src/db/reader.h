@@ -31,6 +31,7 @@ class Reader {
   std::shared_ptr<ReadFile>  file;
   bool const checksum_;       //是否进行数据校验
   std::string backing_store_;
+  std::string_view record;
   bool eof_;
   uint64_t last_record_offset_;
   uint64_t end_of_buffer_offset_;

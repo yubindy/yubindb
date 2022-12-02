@@ -54,7 +54,7 @@ State WriteBatch::InsertInto(std::shared_ptr<Memtable> memtable) {
         if (GetLengthPrefixedview(&ptr, &key) &&
             GetLengthPrefixedview(&ptr, &value)) {
           memtable->Add(now_seq, kTypeValue, key, value);
-          mlog->trace("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
+          mlog->info("memtable add Seq:{} Type:{} Key:{} Value:{}", now_seq,
                       kTypeValue, key, value);
         } else {
           mlog->error("bad WriteBatch Put");

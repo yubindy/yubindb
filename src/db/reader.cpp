@@ -45,8 +45,8 @@ bool Reader::ReadRecord(std::string* str) {
   std::string frame;
   while (true) {
     const unsigned int record_type = ReadPhysicalRecord(&frame);
-    uint64_t physical_recordoff =
-        end_of_buffer_offset_ - kHeaderSize - frame.size();
+    uint64_t physical_recordoff = end_of_buffer_offset_ -
+                                  backing_store_.size() - frame.size();
     switch (record_type) {
       case kFullType:
         if (in_fragmented_record) {
@@ -117,13 +117,13 @@ bool Reader::ReadRecord(std::string* str) {
   }
 }
 unsigned int Reader::ReadPhysicalRecord(std::string* result) {
-  size_t readsize=0;
+  size_t readsize = 0;
   while (true) {
     if (backing_store_.size() < kHeaderSize) {
       if (!eof_) {
         backing_store_.clear();
-        State status = file->Read(kBlockSize, &backing_store_,&readsize);
-        if(readsize<=0){
+        State status = file->Read(kBlockSize, &backing_store_, &readsize);
+        if (readsize <= 0) {
           break;
         }
         //当前Block结束位置的偏移
@@ -171,9 +171,8 @@ unsigned int Reader::ReadPhysicalRecord(std::string* result) {
         return kBadRecord;
       }
     }
-
     result->assign(header + kHeaderSize, length);
-    backing_store_.clear();
+    backing_store_ = backing_store_.substr(kHeaderSize+length, backing_store_.size()-kHeaderSize-length);
     return type;
   }
 }
