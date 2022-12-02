@@ -1,12 +1,13 @@
 #include "skiplistpg.h"
 
+#include <cassert>
 #include <memory>
 
 #include "src/util/key.h"
 namespace yubindb {
 void Skiplist::Insert(SkiplistKey skiplistkv) {
-  //node* p = new node();
-  auto p=std::make_unique<node>();
+  // node* p = new node();
+  auto p = std::make_unique<node>();
   skiplist_init_node(&p->snode);
   skiplistkv.Key(p->key);
   skiplistkv.Val(p->val);
@@ -24,7 +25,9 @@ bool Skiplist::GreaterEqual(SkiplistKey& a, SkiplistKey& b) {
 skiplist_node* Skiplist::Seek(const InternalKey& key) {
   node p(key);
   skiplist_node* t = skiplist_find_greater_or_equal(&table, &p.snode);
-  if(t==nullptr){
+  skiplist_node* cursor = skiplist_begin(&table);
+  if (t == nullptr) {
+    node* entry = _get_entry(cursor, node, snode);
     return nullptr;
   }
   node* pp = _get_entry(t, node, snode);
@@ -45,6 +48,16 @@ State Skiplist::Flushlevel0(FileMate& meta) {
   node* end = SeekToFirst();
   meta.largest.DecodeFrom(end->key.getview());
   while (Valid(beg)) {
+  }
+}
+State Skiplist::findall() {
+  skiplist_node* cursor = skiplist_begin(&table);
+  while (cursor) {
+    node* entry = _get_entry(cursor, node, snode);
+    mlog->info("[iteration] key: {}, value: {} \n", entry->key.getusrkeyview(),
+               entry->val);
+    cursor = skiplist_next(&table, cursor);
+    skiplist_release_node(&entry->snode);
   }
 }
 }  // namespace yubindb

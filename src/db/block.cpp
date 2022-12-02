@@ -23,15 +23,15 @@ State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   }
   const uint32_t crc = DecodeFixed32(content.data() + n + 1);
   const uint32_t truecrc = crc32c::Crc32c(content.data(), n+1);
-  // if (crc != truecrc) {
-  //   mlog->error("block checksum mismatch crc{} truecrc {} str{}",crc,truecrc,content.substr(0,n));
-  //   return State::Corruption();
-  // } //TODO fix
+  if (crc != truecrc) {
+    mlog->error("block checksum mismatch crc{} truecrc {} str{}",crc,truecrc,content.substr(0,n));
+    return State::Corruption();
+  }
   switch (*(content.data() + n)) {
     case kNoCompression:
       *result = content;
       break;
-    default: 
+    case kSnappyCompression:{
       size_t len = 0;
       if (snappy::GetUncompressedLength(content.data(), n, &len)) {
         mlog->error("block checksum mismatch");
@@ -44,10 +44,11 @@ State ReadBlock(RandomAccessFile* file, const ReadOptions& options,
       }
       *result = std::string_view(ptr->data(), len);
       break;
-    // default:
-    //   mlog->error("block type {}",*(content.data() + n));
-    //   return State::Corruption();
-    //   return State::Ok();
+    }
+    default:
+      mlog->error("block type {}",*(content.data() + n));
+      return State::Corruption();
+      return State::Ok();
   }
 }
 void Blockbuilder::Reset() {

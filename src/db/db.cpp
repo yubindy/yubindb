@@ -186,10 +186,10 @@ State DBImpl::RecoverLogFile(uint32_t log_num, bool last_log,
   }
   if (mem != nullptr) {
     // mem did not get reused; compact it.
-    if (s.ok()) {
-      *save_manifest = true;
-      s = WriteLevel0Table(mem, *edit, base);
-    }
+    // if (s.ok()) {
+    //   *save_manifest = true;
+    //   s = WriteLevel0Table(mem, *edit, base);
+    // }
   }
   return s;
 }
@@ -733,5 +733,8 @@ State DBImpl::InstallCompactionResults(
                                    outs.smallest, outs.largest);
   }
   return versions_->LogAndApply(compact->comp->Edit(), &mutex);
+}
+void DBImpl::showall(){
+  mem_->table->findall();
 }
 }  // namespace yubindb

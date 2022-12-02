@@ -29,6 +29,7 @@ State Table::Open(const Options& options_,
   // read index block
   std::string_view index_blocks;
   ReadOptions read;
+  mlog->debug("read index_blocks block form offset {} size {}",footer.index_handle().offset(),footer.index_handle().size());
   s = ReadBlock(file.get(), read, footer.index_handle(), &index_blocks);
 
   if (s.ok()) {  // read filter

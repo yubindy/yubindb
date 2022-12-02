@@ -140,6 +140,7 @@ State Tablebuilder::Finish() {
   BlockHandle filter_block_handle, metaindex_block_handle, index_block_handle;
   if (state.ok() && filter_block != nullptr) {  // Write filter block
     WriteRawBlock(filter_block->Finish(), kNoCompression, &filter_block_handle);
+    mlog->debug("write filter_block block form offset {} size {}",filter_block_handle.offset(),filter_block_handle.size());
   }
   if (state.ok() && filter_block != nullptr) {  // Write metaindex block
     Blockbuilder meta_index_block(&options);
@@ -150,6 +151,7 @@ State Tablebuilder::Finish() {
       meta_index_block.Add(key, handle_encoding);
     }
     WriteBlock(&meta_index_block, &metaindex_block_handle);  // meta_index_block
+    mlog->debug("write meta_index block form offset {} size {}",metaindex_block_handle.offset(),metaindex_block_handle.size());
   }
   if (state.ok()) {
     if (pending_index_entry) {
@@ -159,6 +161,7 @@ State Tablebuilder::Finish() {
       pending_index_entry = false;
     }
     WriteBlock(&index_block, &index_block_handle);
+    mlog->debug("write index_block block form offset {} size {}",index_block_handle.offset(),index_block_handle.size());
   }
   if (state.ok()) {
     Footer footer;
@@ -216,6 +219,7 @@ void Tablebuilder::WriteRawBlock(const std::string_view& block_contents,
     crc = crc32c::Extend(crc, (uint8_t*)ptr, 1);
     EncodeFixed32(ptr+1, crc);
     state = file->Append(std::string_view(ptr, kBlockBackSize));
+    mlog->info("writeblock crc {}",crc); //is true ,bug is not at
     if (state.ok()) {
       offset += block_contents.size() + kBlockBackSize;
     }

@@ -39,6 +39,7 @@ class DB {
                     std::string* value) = 0;
   virtual State Delete(const WriteOptions& options, std::string_view key) = 0;
   virtual State Write(const WriteOptions& options, WriteBatch* updates) = 0;
+  virtual void showall()=0;
 };
 class DBImpl : public DB {
  public:
@@ -117,7 +118,8 @@ class DBImpl : public DB {
   State OpenCompactionOutputFile(CompactionState* compact);
   State InstallCompactionResults(std::unique_ptr<CompactionState>& compact);
   State RecoverLogFile(uint32_t log_num, bool last_log, bool* save_manifest,
-                      VersionEdit* edit, SequenceNum* max_sequence);
+                       VersionEdit* edit, SequenceNum* max_sequence);
+  void showall();
   const std::string dbname;
   const Options* opts;
   std::unique_ptr<FileLock> db_lock;
