@@ -15,4 +15,3 @@ bazel buiild //test... 编译测试
 
 
 基于level 策略lsm-t实现的db，支持kv接口，后续做mysql
-选型 why level?
