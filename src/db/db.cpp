@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <string_view>
 
 #include "../util/bloom.h"
@@ -62,7 +63,6 @@ DBImpl::DBImpl(const Options* opt, const std::string& dbname)
       opts(opt),
       db_lock(nullptr),
       mem_(nullptr),
-      imm_(nullptr),
       has_imm_(false),
       logfilenum(0),
       logfile(nullptr),
@@ -85,7 +85,7 @@ DBImpl::~DBImpl() {
   if (db_lock != nullptr) {
     env->UnlockFile(db_lock);
   }
-  mlog->info("close db {}",dbname);
+  mlog->info("close db {}", dbname);
 }
 //该方法会检查Lock文件是否被占用（LevelDB通过名为LOCK的文件避免多个LevelDB进程同时访问一个数据库）、
 //目录是否存在、Current文件是否存在等。然后主要通过VersionSet::Recover与DBImpl::RecoverLogFile
@@ -308,16 +308,25 @@ State DBImpl::Get(const ReadOptions& options, const std::string_view& key,
   }
   // 增加引用计数，避免在读取过程中被后台线程进行 Compaction 时“垃圾回收”了。
   std::shared_ptr<Memtable> mem = mem_;
-  std::shared_ptr<Memtable> imm = imm_;
+  std::shared_ptr<Memtable> imm = *imm_.begin();
   std::shared_ptr<Version> current = versions_->Current();
   Version::GetStats stats;
   bool have_stat_update = false;
   {
     rlock.unlock();
     const Lookey lk(key, snapshot);
+    auto tt = [&](const Lookey& ptr) -> bool {
+      for (auto it = imm_.begin(); it != imm_.end(); it++) {
+        imm = *it;
+        if (imm->Get(lk, value, &s)) {
+          return true;
+        }
+      };
+      return false;
+    };
     if (mem->Get(lk, value, &s)) {
       // done
-    } else if (imm != nullptr && imm->Get(lk, value, &s)) {
+    } else if (tt(lk)) {
       // done
     } else {
       s = current->Get(options, lk, value, &stats);
@@ -369,10 +378,10 @@ State DBImpl::MakeRoomForwrite(bool force) {
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWrites) {
       mlog->warn("Too many L0 files; waiting...");
       background_work_finished_signal.wait(lks);
-    } else if (imm_ != nullptr) {
-      mlog->info("Current memtable full; waiting...");
-      background_work_finished_signal.wait(lks);
-    } else {
+    }  // else if (imm_ != nullptr) {
+       //  mlog->info("Current memtable full; waiting...");
+       //  background_work_finished_signal.wait(lks);
+    else {
       //到新的memtable并触发旧的进行compaction
       uint64_t new_log_number = versions_->NewFileNumber();
       std::unique_ptr<WritableFile> lfile = nullptr;
@@ -384,7 +393,7 @@ State DBImpl::MakeRoomForwrite(bool force) {
       logfile.reset(lfile.release());
       logwrite = std::make_unique<walWriter>(logfile);
       logfilenum = new_log_number;
-      imm_ = mem_;
+      imm_.emplace_back(mem_);
       has_imm_.store(true, std::memory_order_release);
       mem_ = std::make_shared<Memtable>();
       force = false;
@@ -399,7 +408,7 @@ void DBImpl::MaybeCompaction() {
     mlog->debug("background is work");
   } else if (shutting_down_.load(std::memory_order_acquire)) {
   } else if (!bg_error.ok()) {
-  } else if (imm_ == nullptr && !versions_->NeedsCompaction()) {
+  } else if (imm_.empty() && !versions_->NeedsCompaction()) {
     // No work to be done
   } else {
     background_compaction_ = true;
@@ -480,7 +489,7 @@ void DBImpl::BackgroundCall() {
   background_work_finished_signal.notify_all();
 }
 void DBImpl::BackgroundCompaction() {  // doing compaction
-  if (imm_ != nullptr) {
+  if (!imm_.empty()) {
     CompactMemTable();
     return;
   }
@@ -505,7 +514,7 @@ void DBImpl::CompactMemTable() {
   assert(imm != nullptr);
   VersionEdit edit;
   std::shared_ptr<Version> base = versions_->Current();
-  State s = WriteLevel0Table(imm_, edit, base);
+  State s = WriteLevel0Table(imm_.front(), edit, base);
 
   if (s.ok() && shutting_down_.load(std::memory_order_acquire)) {
     mlog->info("Deleting DB during memtable compaction");
@@ -517,8 +526,10 @@ void DBImpl::CompactMemTable() {
   }
 
   if (s.ok()) {
-    imm_ = nullptr;
-    has_imm_.store(false, std::memory_order_release);
+    imm_.pop_front();
+    if (imm_.empty()) {
+      has_imm_.store(false, std::memory_order_release);
+    }
     DeleteObsoleteFiles();
     mlog->debug("Set imm is nullpter");
   } else {
@@ -602,7 +613,7 @@ State DBImpl::DoCompactionWork(std::unique_ptr<CompactionState>& compact) {
   while (iter->Valid() && !shutting_down_.load(std::memory_order_acquire)) {
     if (has_imm_.load(std::memory_order_relaxed)) {
       mutex.lock();
-      if (imm_ != nullptr) {
+      if (!imm_.empty()) {
         CompactMemTable();
         background_work_finished_signal.notify_all();
       }
@@ -734,7 +745,5 @@ State DBImpl::InstallCompactionResults(
   }
   return versions_->LogAndApply(compact->comp->Edit(), &mutex);
 }
-void DBImpl::showall(){
-  mem_->table->findall();
-}
+void DBImpl::showall() { mem_->table->findall(); }
 }  // namespace yubindb

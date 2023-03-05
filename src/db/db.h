@@ -39,7 +39,7 @@ class DB {
                     std::string* value) = 0;
   virtual State Delete(const WriteOptions& options, std::string_view key) = 0;
   virtual State Write(const WriteOptions& options, WriteBatch* updates) = 0;
-  virtual void showall()=0;
+  virtual void showall() = 0;
 };
 class DBImpl : public DB {
  public:
@@ -126,7 +126,7 @@ class DBImpl : public DB {
 
   std::mutex mutex;
   std::shared_ptr<Memtable> mem_;  // now memtable
-  std::shared_ptr<Memtable> imm_;  // imemtable
+  std::deque<std::shared_ptr<Memtable>> imm_;  // 优化为imemtable队列避免，瞬间大量数据写入，造成大量等待
   std::atomic<bool> has_imm_;
 
   uint64_t logfilenum;
