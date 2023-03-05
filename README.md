@@ -30,3 +30,9 @@
 * 支持kv接口
 * 后续考虑 通过yacc实现 mysql 协议扩展
 
+
+## feater
+* 通过yacc实现 mysql 协议扩展
+* 扩展为分布式框架
+
+
